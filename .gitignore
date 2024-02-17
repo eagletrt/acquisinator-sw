@@ -1,0 +1,13 @@
+*.o
+*.elf
+*.bin
+*.hex
+*.map
+.mxproject
+
+**/build/
+**/Backup/*
+
+**/.vscode/*
+STM32Make.make
+Makefile
