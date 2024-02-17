@@ -98,8 +98,10 @@ int main(void) {
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1) {
-    volatile float ch1 = ltc1865_read(ltc1865_SE_CH1);
-    volatile float ch2 = ltc1865_read(ltc1865_SE_CH2);
+    float ltc1865_channel1_value_in_V = ltc1865_read(ltc1865_SE_CH1);
+    float ltc1865_channel2_value_in_V = ltc1865_read(ltc1865_SE_CH2);
+    acquisinatore_send_ltc1865_vals(ltc1865_channel1_value_in_V,
+                                    ltc1865_channel2_value_in_V);
 
     /* USER CODE END WHILE */
 

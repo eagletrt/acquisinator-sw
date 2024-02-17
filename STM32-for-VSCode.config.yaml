@@ -73,10 +73,10 @@ excludes:
 includeDirectories: 
   - Inc/**
   - Core/Inc/**
-  - Core/Lib/**
   - Src/**
   - Core/Src/**
-  - Core/Lib/**
+  - Core/Lib/micro-libs/can-manager/inc
+  - Core/Lib/can/**
 
 
 # Files that should be included in the compilation.
@@ -87,7 +87,8 @@ includeDirectories:
 sourceFiles:  
   - Src/**
   - Core/Src/**
-  - Core/Lib/**
+  - Core/Lib/micro-libs/can-manager/src/*.c
+  - Core/Lib/can/lib/**/*.c
 
 
 # When no makefile is present it will show a warning pop-up.

@@ -22,6 +22,9 @@
 
 /* USER CODE BEGIN 0 */
 
+uint16_t ltc1865_raw_values[LTC1865_N_CHANNELS];
+float ltc1865_values_in_V[LTC1865_N_CHANNELS];
+
 int ltc1865_select_channel(ltc1865_channel_t c) {
   uint8_t channel_selection_bits[2] = {0x00};
   switch (c) {
@@ -66,19 +69,16 @@ uint16_t ltc1865_spi_rcv(void) {
   return cell_value;
 }
 
-uint16_t ltc1865_raw_values[LTC1865_N_CHANNELS];
-float ltc1865_values_in_V[LTC1865_N_CHANNELS];
-
 float ltc1865_read(ltc1865_channel_t channel) {
   if (ltc1865_select_channel(channel) == 0) {
     return -1;
   }
   uint16_t cval = ltc1865_spi_rcv();
-  int cidx = (int)channel;
-  ltc1865_raw_values[cidx] = (cval << 8) | (cval >> 8);
-  ltc1865_values_in_V[cidx] =
-      3.0019f * ((float)ltc1865_raw_values[cidx]) / 65536.0f;
-  return ltc1865_values_in_V[cidx];
+  ltc1865_raw_values[channel] = (cval << 8) | (cval >> 8);
+  ltc1865_values_in_V[channel] =
+      (ACQUISINATORE_VREF_INT * ((float)ltc1865_raw_values[channel])) /
+      65536.0f;
+  return ltc1865_values_in_V[channel];
 }
 
 /* USER CODE END 0 */

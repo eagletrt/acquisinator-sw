@@ -22,6 +22,10 @@
 
 /* USER CODE BEGIN 0 */
 
+#include "can_manager.h"
+
+void acquisinatore_send_ltc1865_vals(float ch1, float ch2) {}
+
 /* USER CODE END 0 */
 
 CAN_HandleTypeDef hcan;
@@ -52,6 +56,14 @@ void MX_CAN_Init(void) {
     Error_Handler();
   }
   /* USER CODE BEGIN CAN_Init 2 */
+
+  int acquisinatore_can_id = can_mgr_init(&hcan);
+  if (can_mgr_config(acquisinatore_can_id, NULL, CAN_RX_FIFO0, NULL, 0) < 0) {
+    // TODO: error handling
+  }
+  if (can_mgr_start(acquisinatore_can_id) < 0) {
+    // TODO: error handling
+  }
 
   /* USER CODE END CAN_Init 2 */
 }
