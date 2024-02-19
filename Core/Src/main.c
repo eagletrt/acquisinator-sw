@@ -58,6 +58,10 @@ void SystemClock_Config(void);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 
+#ifdef ACQUISINATORE_DEBUG
+void handle_loopback_messages(void);
+#endif
+
 /* USER CODE END 0 */
 
 /**
@@ -102,6 +106,9 @@ int main(void) {
     float ltc1865_channel2_value_in_V = ltc1865_read(ltc1865_SE_CH2);
     acquisinatore_send_ltc1865_vals(ltc1865_channel1_value_in_V,
                                     ltc1865_channel2_value_in_V);
+#ifdef ACQUISINATORE_DEBUG
+    handle_messages();
+#endif
 
     /* USER CODE END WHILE */
 

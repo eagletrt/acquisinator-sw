@@ -1,4 +1,4 @@
-# Acquisinator firmware
+# CODEX ACQVISINATORI
 
 Componente logico permanente disposto per l'Acquisinatore 1865.
 
