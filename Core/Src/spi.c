@@ -25,6 +25,8 @@
 uint16_t ltc1865_raw_values[LTC1865_N_CHANNELS];
 float ltc1865_values_in_V[LTC1865_N_CHANNELS];
 
+void wait_5us(void);
+
 int ltc1865_select_channel(ltc1865_channel_t c) {
   uint8_t channel_selection_bits[2] = {0x00};
   switch (c) {
@@ -48,7 +50,7 @@ int ltc1865_select_channel(ltc1865_channel_t c) {
     break;
   }
   HAL_GPIO_WritePin(GPIOA, SPI_CS_Pin, GPIO_PIN_SET);
-  HAL_Delay(1);
+  wait_5us(); // HAL_Delay(1);
   HAL_GPIO_WritePin(GPIOA, SPI_CS_Pin, GPIO_PIN_RESET);
   HAL_StatusTypeDef spi_trasm_res =
       HAL_SPI_Transmit(&hspi1, channel_selection_bits, 2, 100);
@@ -61,7 +63,7 @@ int ltc1865_select_channel(ltc1865_channel_t c) {
 uint16_t ltc1865_spi_rcv(void) {
   uint16_t cell_value = 0;
   HAL_GPIO_WritePin(GPIOA, SPI_CS_Pin, GPIO_PIN_SET);
-  HAL_Delay(1);
+  wait_5us(); // HAL_Delay(1);
   HAL_GPIO_WritePin(GPIOA, SPI_CS_Pin, GPIO_PIN_RESET);
   if (HAL_SPI_Receive(&hspi1, (uint8_t *)&cell_value, 2, 100) != HAL_OK) {
     return -1;
@@ -102,7 +104,7 @@ void MX_SPI1_Init(void) {
   hspi1.Init.CLKPolarity = SPI_POLARITY_LOW;
   hspi1.Init.CLKPhase = SPI_PHASE_1EDGE;
   hspi1.Init.NSS = SPI_NSS_SOFT;
-  hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_64;
+  hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_256;
   hspi1.Init.FirstBit = SPI_FIRSTBIT_MSB;
   hspi1.Init.TIMode = SPI_TIMODE_DISABLE;
   hspi1.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;

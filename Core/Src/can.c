@@ -26,15 +26,13 @@
 #include "secondary_network.h"
 
 int acquisinatore_can_id;
-#define CAN_MGR_N_MESSAGES 1
-can_mgr_msg_t can_message_states[CAN_MGR_N_MESSAGES];
+// #define CAN_MGR_N_MESSAGES 0
+// can_mgr_msg_t can_message_states[CAN_MGR_N_MESSAGES];
+// uint8_t can_message_new[CAN_MGR_N_MESSAGES];
 
 int can_mgr_from_id_to_index(int can_id, int msg_id) {
   if (can_id != acquisinatore_can_id) {
     return -1;
-  }
-  if (msg_id == SECONDARY_REAR_AMMO_POS_FRAME_ID) {
-    return 0;
   } else {
     return -1;
   }
@@ -50,23 +48,9 @@ void acquisinatore_send_ltc1865_vals(float ch1, float ch2) {
   secondary_rear_ammo_pos_pack(msg.data, &raw,
                                SECONDARY_REAR_AMMO_POS_BYTE_SIZE);
   if (can_mgr_send(acquisinatore_can_id, &msg) < 0) {
-    volatile HAL_CAN_StateTypeDef can_state = HAL_CAN_GetState(&hcan);
     HAL_GPIO_WritePin(USER_LED_GPIO_Port, USER_LED_Pin, GPIO_PIN_SET);
   }
 }
-
-#ifdef ACQUISINATORE_DEBUG
-void handle_loopback_messages(void) {
-  secondary_rear_ammo_pos_t raw;
-  secondary_rear_ammo_pos_converted_t converted = {.rl = 0.0f, .rl = 0.0f};
-  secondary_rear_ammo_pos_unpack(&raw, can_message_states[0].data,
-                                 SECONDARY_REAR_AMMO_POS_BYTE_SIZE);
-  secondary_rear_ammo_pos_raw_to_conversion_struct(&converted, &raw);
-  if (converted.rl > 0.5) {
-    HAL_GPIO_WritePin(USER_LED_GPIO_Port, USER_LED_Pin, GPIO_PIN_SET);
-  }
-}
-#endif
 
 /* USER CODE END 0 */
 
@@ -83,11 +67,11 @@ void MX_CAN_Init(void) {
 
   /* USER CODE END CAN_Init 1 */
   hcan.Instance = CAN;
-  hcan.Init.Prescaler = 1;
+  hcan.Init.Prescaler = 2;
   hcan.Init.Mode = CAN_MODE_LOOPBACK;
   hcan.Init.SyncJumpWidth = CAN_SJW_1TQ;
-  hcan.Init.TimeSeg1 = CAN_BS1_6TQ;
-  hcan.Init.TimeSeg2 = CAN_BS2_1TQ;
+  hcan.Init.TimeSeg1 = CAN_BS1_15TQ;
+  hcan.Init.TimeSeg2 = CAN_BS2_2TQ;
   hcan.Init.TimeTriggeredMode = DISABLE;
   hcan.Init.AutoBusOff = DISABLE;
   hcan.Init.AutoWakeUp = DISABLE;
@@ -98,23 +82,20 @@ void MX_CAN_Init(void) {
     Error_Handler();
   }
   /* USER CODE BEGIN CAN_Init 2 */
-
+  /*
   CAN_FilterTypeDef hfilter = {.FilterActivation = CAN_FILTER_ENABLE,
-                               .FilterBank = 0,
-                               .FilterFIFOAssignment = CAN_FILTER_FIFO0,
-                               .FilterIdHigh = ((1U << 11) - 1)
-                                               << 5, // Take all ids to 2^11 - 1
-                               .FilterIdLow = 0,     // Take all ids from 0
-                               .FilterMaskIdHigh = 0,
-                               .FilterMaskIdLow = 0,
-                               .FilterMode = CAN_FILTERMODE_IDMASK,
-                               .FilterScale = CAN_FILTERSCALE_16BIT};
+                                 .FilterBank = 0,
+                                 .FilterFIFOAssignment = CAN_FILTER_FIFO0,
+                                 .FilterIdHigh = ((1U << 11) - 1)
+                                                 << 5, // Take all ids to 2^11 -
+  1 .FilterIdLow = 0,     // Take all ids from 0 .FilterMaskIdHigh = 0,
+                                 .FilterMaskIdLow = 0,
+                                 .FilterMode = CAN_FILTERMODE_IDMASK,
+                                 .FilterScale = CAN_FILTERSCALE_16BIT};
+  */
 
   acquisinatore_can_id = can_mgr_init(&hcan);
-  if (can_mgr_config(acquisinatore_can_id, &hfilter,
-                     CAN_IT_RX_FIFO0_MSG_PENDING | CAN_IT_RX_FIFO1_MSG_PENDING,
-                     CAN_RX_FIFO0, (can_mgr_msg_t *)can_message_states,
-                     CAN_MGR_N_MESSAGES) < 0) {
+  if (can_mgr_config(acquisinatore_can_id, NULL, 0, CAN_RX_FIFO0, NULL, NULL, 0) < 0) {
     HAL_GPIO_WritePin(USER_LED_GPIO_Port, USER_LED_Pin, GPIO_PIN_SET);
     Error_Handler();
   }
@@ -149,6 +130,8 @@ void HAL_CAN_MspInit(CAN_HandleTypeDef *canHandle) {
     HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
     /* CAN interrupt Init */
+    HAL_NVIC_SetPriority(CAN_TX_IRQn, 0, 0);
+    HAL_NVIC_EnableIRQ(CAN_TX_IRQn);
     HAL_NVIC_SetPriority(CAN_RX0_IRQn, 0, 0);
     HAL_NVIC_EnableIRQ(CAN_RX0_IRQn);
     HAL_NVIC_SetPriority(CAN_RX1_IRQn, 0, 0);
@@ -175,6 +158,7 @@ void HAL_CAN_MspDeInit(CAN_HandleTypeDef *canHandle) {
     HAL_GPIO_DeInit(GPIOA, GPIO_PIN_11 | GPIO_PIN_12);
 
     /* CAN interrupt Deinit */
+    HAL_NVIC_DisableIRQ(CAN_TX_IRQn);
     HAL_NVIC_DisableIRQ(CAN_RX0_IRQn);
     HAL_NVIC_DisableIRQ(CAN_RX1_IRQn);
     /* USER CODE BEGIN CAN_MspDeInit 1 */

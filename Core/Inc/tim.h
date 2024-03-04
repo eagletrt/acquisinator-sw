@@ -1,9 +1,9 @@
 /* USER CODE BEGIN Header */
 /**
  ******************************************************************************
- * @file    spi.h
+ * @file    tim.h
  * @brief   This file contains all the function prototypes for
- *          the spi.c file
+ *          the tim.c file
  ******************************************************************************
  * @attention
  *
@@ -18,8 +18,8 @@
  */
 /* USER CODE END Header */
 /* Define to prevent recursive inclusion -------------------------------------*/
-#ifndef __SPI_H__
-#define __SPI_H__
+#ifndef __TIM_H__
+#define __TIM_H__
 
 #ifdef __cplusplus
 extern "C" {
@@ -32,27 +32,15 @@ extern "C" {
 
 /* USER CODE END Includes */
 
-extern SPI_HandleTypeDef hspi1;
+extern TIM_HandleTypeDef htim2;
 
 /* USER CODE BEGIN Private defines */
 
-#define ACQUISINATORE_VREF_INT (3.0f) // TODO: check vrefint
-
 /* USER CODE END Private defines */
 
-void MX_SPI1_Init(void);
+void MX_TIM2_Init(void);
 
 /* USER CODE BEGIN Prototypes */
-
-typedef enum {
-  ltc1865_DIFF,
-  ltc1865_DIFF_INVERTED,
-  ltc1865_SE_CH1,
-  ltc1865_SE_CH2,
-  LTC1865_N_CHANNELS
-} ltc1865_channel_t;
-
-float ltc1865_read(ltc1865_channel_t channel);
 
 /* USER CODE END Prototypes */
 
@@ -60,4 +48,4 @@ float ltc1865_read(ltc1865_channel_t channel);
 }
 #endif
 
-#endif /* __SPI_H__ */
+#endif /* __TIM_H__ */
