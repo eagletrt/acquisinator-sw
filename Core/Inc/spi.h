@@ -30,13 +30,13 @@ extern "C" {
 
 /* USER CODE BEGIN Includes */
 
+#include "acquisinator_config.h"
+
 /* USER CODE END Includes */
 
 extern SPI_HandleTypeDef hspi1;
 
 /* USER CODE BEGIN Private defines */
-
-#define ACQUISINATORE_VREF_INT (3.0f) // TODO: check vrefint
 
 /* USER CODE END Private defines */
 

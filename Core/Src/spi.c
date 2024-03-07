@@ -50,7 +50,8 @@ int ltc1865_select_channel(ltc1865_channel_t c) {
     break;
   }
   HAL_GPIO_WritePin(GPIOA, SPI_CS_Pin, GPIO_PIN_SET);
-  wait_5us(); // HAL_Delay(1);
+  // wait_5us();
+  HAL_Delay(1);
   HAL_GPIO_WritePin(GPIOA, SPI_CS_Pin, GPIO_PIN_RESET);
   HAL_StatusTypeDef spi_trasm_res =
       HAL_SPI_Transmit(&hspi1, channel_selection_bits, 2, 100);
@@ -63,7 +64,8 @@ int ltc1865_select_channel(ltc1865_channel_t c) {
 uint16_t ltc1865_spi_rcv(void) {
   uint16_t cell_value = 0;
   HAL_GPIO_WritePin(GPIOA, SPI_CS_Pin, GPIO_PIN_SET);
-  wait_5us(); // HAL_Delay(1);
+  // wait_5us();
+  HAL_Delay(1);
   HAL_GPIO_WritePin(GPIOA, SPI_CS_Pin, GPIO_PIN_RESET);
   if (HAL_SPI_Receive(&hspi1, (uint8_t *)&cell_value, 2, 100) != HAL_OK) {
     return -1;

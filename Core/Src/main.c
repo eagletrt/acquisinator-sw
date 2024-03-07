@@ -27,6 +27,8 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 
+#include "math.h"
+
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -58,6 +60,10 @@ void SystemClock_Config(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+
+void acquisinatore_send_cooling_temp(float temperature);
+void acquisinatore_send_strain_gauge_val(float strain_gauge_val);
+void acquisinatore_send_raw_voltage_values(float channel1, float channel2);
 
 /* USER CODE END 0 */
 
@@ -102,8 +108,15 @@ int main(void) {
   while (1) {
     float ltc1865_channel1_value_in_V = ltc1865_read(ltc1865_SE_CH1);
     float ltc1865_channel2_value_in_V = ltc1865_read(ltc1865_SE_CH2);
-    acquisinatore_send_ltc1865_vals(ltc1865_channel1_value_in_V,
-                                    ltc1865_channel2_value_in_V);
+    acquisinatore_send_cooling_temp(
+        NTC_COOLING_CONV(ltc1865_channel1_value_in_V));
+    HAL_Delay(1);
+    acquisinatore_send_strain_gauge_val(
+        FROM_mV_TO_ROD_ELONGATION(ltc1865_channel2_value_in_V));
+    HAL_Delay(1);
+    acquisinatore_send_raw_voltage_values(ltc1865_channel1_value_in_V,
+                                          ltc1865_channel2_value_in_V);
+    HAL_Delay(1);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */

@@ -22,6 +22,7 @@
 
 /* USER CODE BEGIN 0 */
 
+#include "acquisinator_config.h"
 #include "can_manager.h"
 #include "secondary_network.h"
 
@@ -38,16 +39,44 @@ int can_mgr_from_id_to_index(int can_id, int msg_id) {
   }
 }
 
-void acquisinatore_send_ltc1865_vals(float ch1, float ch2) {
-  secondary_rear_ammo_pos_converted_t converted = {.rl = ch1, .rr = ch2};
-  can_mgr_msg_t msg = {0};
-  msg.id = SECONDARY_REAR_AMMO_POS_FRAME_ID;
-  msg.size = SECONDARY_REAR_AMMO_POS_BYTE_SIZE;
-  secondary_rear_ammo_pos_t raw = {0};
-  secondary_rear_ammo_pos_conversion_to_raw_struct(&raw, &converted);
-  secondary_rear_ammo_pos_pack(msg.data, &raw,
-                               SECONDARY_REAR_AMMO_POS_BYTE_SIZE);
-  if (can_mgr_send(acquisinatore_can_id, &msg) < 0) {
+#define CANLIB_PACK(msg_name, MSG_NAME, ntw, NTW)                              \
+  can_mgr_msg_t msg_to_be_sent = {0};                                          \
+  msg_to_be_sent.id = NTW##_##MSG_NAME##_FRAME_ID;                             \
+  msg_to_be_sent.size = NTW##_##MSG_NAME##_BYTE_SIZE;                          \
+  ntw##_##msg_name##_t raw = {0};                                              \
+  ntw##_##msg_name##_conversion_to_raw_struct(&raw, &converted);               \
+  ntw##_##msg_name##_pack(msg_to_be_sent.data, &raw, msg_to_be_sent.size);
+
+void acquisinatore_send_cooling_temp(float temperature) {
+  secondary_cooling_temp_converted_t converted = {
+#if ACQUISINATOR_ID == 1
+    .bottom_right = temperature
+#elif ACQUISINATOR_ID == 2
+    .bottom_left = temperature
+#else
+    0
+#endif
+  };
+  CANLIB_PACK(cooling_temp, COOLING_TEMP, secondary, SECONDARY);
+  if (can_mgr_send(acquisinatore_can_id, &msg_to_be_sent) < 0) {
+    HAL_GPIO_WritePin(USER_LED_GPIO_Port, USER_LED_Pin, GPIO_PIN_SET);
+  }
+}
+
+void acquisinatore_send_strain_gauge_val(float strain_gauge_val) {
+  secondary_rod_elongation_converted_t converted = {.deformation =
+                                                        strain_gauge_val};
+  CANLIB_PACK(rod_elongation, ROD_ELONGATION, secondary, SECONDARY);
+  if (can_mgr_send(acquisinatore_can_id, &msg_to_be_sent) < 0) {
+    HAL_GPIO_WritePin(USER_LED_GPIO_Port, USER_LED_Pin, GPIO_PIN_SET);
+  }
+}
+
+void acquisinatore_send_raw_voltage_values(float channel1, float channel2) {
+  secondary_debug_signal_converted_t converted = {
+      .field_1 = (channel1 / 10.0f), .field_2 = (channel2 / 10.0f)};
+  CANLIB_PACK(debug_signal, DEBUG_SIGNAL, secondary, SECONDARY);
+  if (can_mgr_send(acquisinatore_can_id, &msg_to_be_sent) < 0) {
     HAL_GPIO_WritePin(USER_LED_GPIO_Port, USER_LED_Pin, GPIO_PIN_SET);
   }
 }
@@ -95,7 +124,8 @@ void MX_CAN_Init(void) {
   */
 
   acquisinatore_can_id = can_mgr_init(&hcan);
-  if (can_mgr_config(acquisinatore_can_id, NULL, 0, CAN_RX_FIFO0, NULL, NULL, 0) < 0) {
+  if (can_mgr_config(acquisinatore_can_id, NULL, 0, CAN_RX_FIFO0, NULL, NULL,
+                     0) < 0) {
     HAL_GPIO_WritePin(USER_LED_GPIO_Port, USER_LED_Pin, GPIO_PIN_SET);
     Error_Handler();
   }
