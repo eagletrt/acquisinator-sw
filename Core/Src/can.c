@@ -24,6 +24,7 @@
 
 #include "acquisinator_config.h"
 #include "can_manager.h"
+#include "error_codes.h"
 #include "secondary_network.h"
 
 int acquisinatore_can_id;
@@ -59,7 +60,7 @@ void acquisinatore_send_cooling_temp(float temperature) {
   };
   CANLIB_PACK(cooling_temp, COOLING_TEMP, secondary, SECONDARY);
   if (can_mgr_send(acquisinatore_can_id, &msg_to_be_sent) < 0) {
-    HAL_GPIO_WritePin(USER_LED_GPIO_Port, USER_LED_Pin, GPIO_PIN_SET);
+    acquisinatore_set_led_code(acquisinatore_led_code_can_not_working);
   }
 }
 
@@ -68,7 +69,7 @@ void acquisinatore_send_strain_gauge_val(float strain_gauge_val) {
                                                         strain_gauge_val};
   CANLIB_PACK(rod_elongation, ROD_ELONGATION, secondary, SECONDARY);
   if (can_mgr_send(acquisinatore_can_id, &msg_to_be_sent) < 0) {
-    HAL_GPIO_WritePin(USER_LED_GPIO_Port, USER_LED_Pin, GPIO_PIN_SET);
+    acquisinatore_set_led_code(acquisinatore_led_code_can_not_working);
   }
 }
 
@@ -77,7 +78,7 @@ void acquisinatore_send_raw_voltage_values(float channel1, float channel2) {
       .field_1 = (channel1 / 10.0f), .field_2 = (channel2 / 10.0f)};
   CANLIB_PACK(debug_signal, DEBUG_SIGNAL, secondary, SECONDARY);
   if (can_mgr_send(acquisinatore_can_id, &msg_to_be_sent) < 0) {
-    HAL_GPIO_WritePin(USER_LED_GPIO_Port, USER_LED_Pin, GPIO_PIN_SET);
+    acquisinatore_set_led_code(acquisinatore_led_code_can_not_working);
   }
 }
 

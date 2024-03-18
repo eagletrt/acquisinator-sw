@@ -27,7 +27,8 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 
-#include "math.h"
+// #include "math.h"
+#include "error_codes.h"
 
 /* USER CODE END Includes */
 
@@ -56,6 +57,8 @@
 void SystemClock_Config(void);
 /* USER CODE BEGIN PFP */
 
+extern uint32_t last_set_error;
+
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -64,6 +67,16 @@ void SystemClock_Config(void);
 void acquisinatore_send_cooling_temp(float temperature);
 void acquisinatore_send_strain_gauge_val(float strain_gauge_val);
 void acquisinatore_send_raw_voltage_values(float channel1, float channel2);
+
+void acquisinatore_turn_led(int on) {
+  if (on) {
+    HAL_GPIO_WritePin(USER_LED_GPIO_Port, USER_LED_Pin, GPIO_PIN_SET);
+  } else {
+    HAL_GPIO_WritePin(USER_LED_GPIO_Port, USER_LED_Pin, GPIO_PIN_RESET);
+  }
+}
+
+uint32_t get_timestamp_ms(void) { return HAL_GetTick(); }
 
 /* USER CODE END 0 */
 
@@ -108,15 +121,17 @@ int main(void) {
   while (1) {
     float ltc1865_channel1_value_in_V = ltc1865_read(ltc1865_SE_CH1);
     float ltc1865_channel2_value_in_V = ltc1865_read(ltc1865_SE_CH2);
-    acquisinatore_send_cooling_temp(
-        NTC_COOLING_CONV(ltc1865_channel1_value_in_V));
-    HAL_Delay(1);
+    // acquisinatore_send_cooling_temp(
+    // NTC_COOLING_CONV(ltc1865_channel1_value_in_V));
+    // HAL_Delay(50);
     acquisinatore_send_strain_gauge_val(
         FROM_mV_TO_ROD_ELONGATION(ltc1865_channel2_value_in_V));
-    HAL_Delay(1);
-    acquisinatore_send_raw_voltage_values(ltc1865_channel1_value_in_V,
-                                          ltc1865_channel2_value_in_V);
-    HAL_Delay(1);
+    HAL_Delay(5);
+    // acquisinatore_send_raw_voltage_values(ltc1865_channel1_value_in_V,
+    // ltc1865_channel2_value_in_V);
+    // HAL_Delay(100);
+    acquisinatore_set_led_code(last_set_error);
+    acquisinatore_led_code_routine();
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */

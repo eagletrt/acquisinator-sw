@@ -3,6 +3,22 @@
 
 #define ACQUISINATOR_ID 1
 
+#include <stdint.h>
+
+/***
+ * NB: LED always on = error on CAN bus initialization
+ */
+typedef enum {
+  acquisinatore_led_code_no_error = 0,
+  acquisinatore_led_code_all_ok,
+  acquisinatore_led_code_can_not_working,
+  acquisinatore_led_code_spi_error,
+  acquisinatore_led_code_n_values
+} acquisinatore_led_code_t;
+
+void acquisinatore_turn_led(int on);
+uint32_t get_timestamp_ms(void);
+
 #define ACQUISINATORE_VREF_INT (3.29f)
 
 #define NTC_COOLING_CONV(val)                                                  \
