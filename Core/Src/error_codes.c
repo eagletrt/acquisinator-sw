@@ -1,7 +1,7 @@
 #include "error_codes.h"
 
-uint32_t last_set_error = acquisinatore_led_code_no_error;
-uint32_t error_countdown = acquisinatore_led_code_no_error;
+uint32_t last_set_error = acquisinatore_led_code_all_ok;
+uint32_t error_countdown = 0;
 uint32_t previous_time = 0;
 uint32_t acquisinatore_led_on = 0;
 

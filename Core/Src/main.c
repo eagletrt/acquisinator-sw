@@ -114,6 +114,8 @@ int main(void) {
   MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
 
+  acquisinatore_set_led_code(acquisinatore_led_code_all_ok);
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -126,7 +128,7 @@ int main(void) {
     // HAL_Delay(50);
     acquisinatore_send_strain_gauge_val(
         FROM_mV_TO_ROD_ELONGATION(ltc1865_channel2_value_in_V));
-    HAL_Delay(5);
+    HAL_Delay(100);
     // acquisinatore_send_raw_voltage_values(ltc1865_channel1_value_in_V,
     // ltc1865_channel2_value_in_V);
     // HAL_Delay(100);
