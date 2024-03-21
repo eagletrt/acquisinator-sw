@@ -22,8 +22,19 @@
 
 /* USER CODE BEGIN 0 */
 
+#include "lpfilter.h"
+
+#define MOVING_AVG_WINDOW 10
+
 uint16_t ltc1865_raw_values[LTC1865_N_CHANNELS];
+uint16_t ltc1865_raw_filtered_values[LTC1865_N_CHANNELS];
 float ltc1865_values_in_V[LTC1865_N_CHANNELS];
+
+uint16_t acquisinatore_current_mean[LTC1865_N_CHANNELS];
+uint16_t acquisinatore_history[LTC1865_N_CHANNELS][MOVING_AVG_WINDOW];
+uint64_t acquisinatore_hsum[LTC1865_N_CHANNELS];
+size_t acquisinatore_history_len[LTC1865_N_CHANNELS];
+int acquisinatore_completed_loop[LTC1865_N_CHANNELS];
 
 void wait_5us(void);
 
@@ -78,7 +89,16 @@ float ltc1865_read(ltc1865_channel_t channel) {
     return -1;
   }
   uint16_t cval = ltc1865_spi_rcv();
+  if (cval == -1) {
+    return -1;
+  }
   ltc1865_raw_values[channel] = (cval << 8) | (cval >> 8);
+  ltc1865_raw_filtered_values[channel] = apply_moving_avg(
+      ltc1865_raw_values[channel], &acquisinatore_current_mean[channel],
+      acquisinatore_history[channel], MOVING_AVG_WINDOW,
+      &acquisinatore_hsum[channel], &acquisinatore_history_len[channel],
+      &acquisinatore_completed_loop[channel]
+  );
   ltc1865_values_in_V[channel] =
       (ACQUISINATORE_VREF_INT * ((float)ltc1865_raw_values[channel])) /
       65536.0f;

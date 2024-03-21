@@ -123,6 +123,10 @@ int main(void) {
   while (1) {
     float ltc1865_channel1_value_in_V = ltc1865_read(ltc1865_SE_CH1);
     float ltc1865_channel2_value_in_V = ltc1865_read(ltc1865_SE_CH2);
+    if (ltc1865_channel1_value_in_V == -1 ||
+        ltc1865_channel2_value_in_V == -1) {
+      acquisinatore_set_led_code(acquisinatore_led_code_spi_error);
+    }
     // acquisinatore_send_cooling_temp(
     // NTC_COOLING_CONV(ltc1865_channel1_value_in_V));
     // HAL_Delay(50);
