@@ -21,9 +21,21 @@ uint32_t get_timestamp_ms(void);
 
 #define ACQUISINATORE_VREF_INT (3.29f)
 
+// -84.5939048598991 425.004221588082 -831.830860786940 808.342944901787
+// -441.361483066664 144.753928685635
+
 #define NTC_COOLING_CONV(val)                                                  \
-  (35.3762f + (232.6089 * val) - (235.0224 * pow(val, 2)) +                    \
-   (85.3961 * pow(val, 3)) - (11.3187 * pow(val, 4)))
+  (-84.5939048598991 + (425.004221588082 * val) +                              \
+   (-831.830860786940 * powl(val, 2.0)) +                                      \
+   (808.342944901787 * powl(val, 3.0)) +                                       \
+   (-441.361483066664 * powl(val, 4.0)) + (144.753928685635 * powl(val, 5.0)))
+
+// #define NTC_COOLING_CONV(val) (35.3762f + (232.6089 * val) - (235.0224 *
+// pow(val, 2)) + (85.3961 * pow(val, 3)) - (11.3187 * pow(val, 4)))
+
+// #define NTC_COOLING_CONV(val)
+//   (35.3762 + (232.6089 * val) - (235.0224 * (val ** 2)) + (85.3961 * (val **
+//   3)) - (11.3187 * (val ** 4)))
 
 #define STRAIN_GAUGE_R1 (352)
 #define STRAIN_GAUGE_R2 (350)

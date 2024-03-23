@@ -27,8 +27,8 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 
-// #include "math.h"
 #include "error_codes.h"
+#include "math.h"
 
 /* USER CODE END Includes */
 
@@ -64,7 +64,7 @@ extern uint32_t last_set_error;
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 
-void acquisinatore_send_cooling_temp(float temperature);
+void acquisinatore_send_cooling_temp(long double temperature);
 void acquisinatore_send_strain_gauge_val(float strain_gauge_val);
 void acquisinatore_send_raw_voltage_values(float channel1, float channel2);
 
@@ -127,15 +127,15 @@ int main(void) {
         ltc1865_channel2_value_in_V == -1) {
       acquisinatore_set_led_code(acquisinatore_led_code_spi_error);
     }
-    // acquisinatore_send_cooling_temp(
-    // NTC_COOLING_CONV(ltc1865_channel1_value_in_V));
-    // HAL_Delay(50);
+    acquisinatore_send_cooling_temp(
+        NTC_COOLING_CONV(ltc1865_channel1_value_in_V / 2));
+    HAL_Delay(2);
     acquisinatore_send_strain_gauge_val(
         FROM_mV_TO_ROD_ELONGATION(ltc1865_channel2_value_in_V));
-    HAL_Delay(100);
-    // acquisinatore_send_raw_voltage_values(ltc1865_channel1_value_in_V,
-    // ltc1865_channel2_value_in_V);
-    // HAL_Delay(100);
+    HAL_Delay(2);
+    acquisinatore_send_raw_voltage_values(ltc1865_channel1_value_in_V,
+                                          ltc1865_channel2_value_in_V);
+    HAL_Delay(2);
     acquisinatore_set_led_code(last_set_error);
     acquisinatore_led_code_routine();
     /* USER CODE END WHILE */

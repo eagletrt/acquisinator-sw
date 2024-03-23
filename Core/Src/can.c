@@ -48,8 +48,10 @@ int can_mgr_from_id_to_index(int can_id, int msg_id) {
   ntw##_##msg_name##_conversion_to_raw_struct(&raw, &converted);               \
   ntw##_##msg_name##_pack(msg_to_be_sent.data, &raw, msg_to_be_sent.size);
 
-void acquisinatore_send_cooling_temp(float temperature) {
+void acquisinatore_send_cooling_temp(long double temperature) {
   secondary_cooling_temp_converted_t converted = {
+  // .top_left = channel1 * 10,
+  // .top_right = channel2 * 10,
 #if ACQUISINATOR_ID == 1
     .bottom_right = temperature
 #elif ACQUISINATOR_ID == 2

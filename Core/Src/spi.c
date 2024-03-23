@@ -93,12 +93,15 @@ float ltc1865_read(ltc1865_channel_t channel) {
     return -1;
   }
   ltc1865_raw_values[channel] = (cval << 8) | (cval >> 8);
-  ltc1865_raw_filtered_values[channel] = apply_moving_avg(
+  ltc1865_raw_filtered_values[channel] = ltc1865_raw_values[channel];
+  /*
+   apply_moving_avg(
       ltc1865_raw_values[channel], &acquisinatore_current_mean[channel],
       acquisinatore_history[channel], MOVING_AVG_WINDOW,
       &acquisinatore_hsum[channel], &acquisinatore_history_len[channel],
       &acquisinatore_completed_loop[channel]
   );
+  */
   ltc1865_values_in_V[channel] =
       (ACQUISINATORE_VREF_INT * ((float)ltc1865_raw_values[channel])) /
       65536.0f;
