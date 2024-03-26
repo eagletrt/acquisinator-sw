@@ -129,13 +129,13 @@ int main(void) {
     }
     acquisinatore_send_cooling_temp(
         NTC_COOLING_CONV(ltc1865_channel1_value_in_V / 2));
-    HAL_Delay(2);
+    HAL_Delay(1);
     acquisinatore_send_strain_gauge_val(
         FROM_mV_TO_ROD_ELONGATION(ltc1865_channel2_value_in_V));
-    HAL_Delay(2);
+    HAL_Delay(1);
     acquisinatore_send_raw_voltage_values(ltc1865_channel1_value_in_V,
                                           ltc1865_channel2_value_in_V);
-    HAL_Delay(2);
+    HAL_Delay(1);
     acquisinatore_set_led_code(last_set_error);
     acquisinatore_led_code_routine();
     /* USER CODE END WHILE */
