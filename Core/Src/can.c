@@ -67,18 +67,18 @@ void acquisinatore_send_cooling_temp(long double temperature) {
 }
 
 void acquisinatore_send_strain_gauge_val(float strain_gauge_val) {
-  secondary_rod_elongation_converted_t converted = {.deformation =
+  secondary_link_deformation_converted_t converted = {.deformation =
                                                         strain_gauge_val};
-  CANLIB_PACK(rod_elongation, ROD_ELONGATION, secondary, SECONDARY);
+  CANLIB_PACK(link_deformation, LINK_DEFORMATION, secondary, SECONDARY);
   if (can_mgr_send(acquisinatore_can_id, &msg_to_be_sent) < 0) {
     acquisinatore_set_led_code(acquisinatore_led_code_can_not_working);
   }
 }
 
 void acquisinatore_send_raw_voltage_values(float channel1, float channel2) {
-  secondary_debug_signal_converted_t converted = {
+  secondary_debug_signal_2_converted_t converted = {
       .field_1 = (channel1 / 10.0f), .field_2 = (channel2 / 10.0f)};
-  CANLIB_PACK(debug_signal, DEBUG_SIGNAL, secondary, SECONDARY);
+  CANLIB_PACK(debug_signal_2, DEBUG_SIGNAL_2, secondary, SECONDARY);
   if (can_mgr_send(acquisinatore_can_id, &msg_to_be_sent) < 0) {
     acquisinatore_set_led_code(acquisinatore_led_code_can_not_working);
   }

@@ -88,7 +88,8 @@ sourceFiles:
   - Src/**
   - Core/Src/**
   - Core/Lib/micro-libs/can-manager/src/*.c
-  - Core/Lib/can/lib/**/*.c
+  - Core/Lib/can/lib/**/*_network.c
+  - Core/Lib/can/lib/**/*_watchdog.c
 
 
 # When no makefile is present it will show a warning pop-up.
