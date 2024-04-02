@@ -115,6 +115,8 @@ int main(void) {
   /* USER CODE BEGIN 2 */
 
   acquisinatore_set_led_code(acquisinatore_led_code_all_ok);
+  uint32_t prevtime_rods = HAL_GetTick();
+  uint32_t prevtime_cooling = HAL_GetTick();
 
   /* USER CODE END 2 */
 
@@ -127,15 +129,18 @@ int main(void) {
         ltc1865_channel2_value_in_V == -1) {
       acquisinatore_set_led_code(acquisinatore_led_code_spi_error);
     }
-    acquisinatore_send_cooling_temp(
-        NTC_COOLING_CONV(ltc1865_channel1_value_in_V / 2));
+    uint32_t currtime = HAL_GetTick();
+    if ((prevtime_rods - currtime) > ROD_DELAY_MS) {
+      acquisinatore_send_cooling_temp(NTC_COOLING_CONV(ltc1865_channel1_value_in_V / 2));
+      prevtime_rods = currtime;
+    }
+    if ((prevtime_cooling - currtime) > NTC_COOLING_DELAY_MS) {
+      acquisinatore_send_strain_gauge_val(FROM_mV_TO_ROD_ELONGATION(ltc1865_channel2_value_in_V));
+      prevtime_cooling = currtime;
+    }
     HAL_Delay(1);
-    acquisinatore_send_strain_gauge_val(
-        FROM_mV_TO_ROD_ELONGATION(ltc1865_channel2_value_in_V));
-    HAL_Delay(1);
-    acquisinatore_send_raw_voltage_values(ltc1865_channel1_value_in_V,
-                                          ltc1865_channel2_value_in_V);
-    HAL_Delay(1);
+    // acquisinatore_send_raw_voltage_values(ltc1865_channel1_value_in_V, ltc1865_channel2_value_in_V);
+    // HAL_Delay(1);
     acquisinatore_set_led_code(last_set_error);
     acquisinatore_led_code_routine();
     /* USER CODE END WHILE */

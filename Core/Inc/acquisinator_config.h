@@ -43,6 +43,9 @@ uint32_t get_timestamp_ms(void);
 //   (35.3762 + (232.6089 * val) - (235.0224 * (val ** 2)) + (85.3961 * (val **
 //   3)) - (11.3187 * (val ** 4)))
 
+#define NTC_COOLING_DELAY_MS (500U)
+#define ROD_DELAY_MS (1U)
+
 #define STRAIN_GAUGE_R1 (352)
 #define STRAIN_GAUGE_R2 (350)
 #define STRAIN_GAUGE_R3 (352)
