@@ -48,17 +48,12 @@ int can_mgr_from_id_to_index(int can_id, int msg_id) {
   ntw##_##msg_name##_conversion_to_raw_struct(&raw, &converted);               \
   ntw##_##msg_name##_pack(msg_to_be_sent.data, &raw, msg_to_be_sent.size);
 
-void acquisinatore_send_cooling_temp(long double temperature) {
+void acquisinatore_send_cooling_temp(long double t1, long double t2, long double t3, long double t4) {
   secondary_cooling_temp_converted_t converted = {
-  // .top_left = channel1 * 10,
-  // .top_right = channel2 * 10,
-#if ACQUISINATOR_ID == 1
-    .bottom_right = temperature
-#elif ACQUISINATOR_ID == 2
-    .bottom_left = temperature
-#else
-    0
-#endif
+    .top_left = t1,
+    .top_right = t2,
+    .bottom_right = t3,
+    .bottom_left = t4
   };
   CANLIB_PACK(cooling_temp, COOLING_TEMP, secondary, SECONDARY);
   if (can_mgr_send(acquisinatore_can_id, &msg_to_be_sent) < 0) {

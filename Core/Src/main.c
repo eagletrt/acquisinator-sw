@@ -64,7 +64,7 @@ extern uint32_t last_set_error;
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 
-void acquisinatore_send_cooling_temp(long double temperature);
+void acquisinatore_send_cooling_temp(long double t1, long double t2, long double t3, long double t4);
 void acquisinatore_send_strain_gauge_val(float strain_gauge_val);
 void acquisinatore_send_raw_voltage_values(float channel1, float channel2);
 
@@ -129,16 +129,20 @@ int main(void) {
         ltc1865_channel2_value_in_V == -1) {
       acquisinatore_set_led_code(acquisinatore_led_code_spi_error);
     }
-    uint32_t currtime = HAL_GetTick();
-    if ((prevtime_rods - currtime) > ROD_DELAY_MS) {
-      acquisinatore_send_cooling_temp(NTC_COOLING_CONV(ltc1865_channel1_value_in_V / 2));
-      prevtime_rods = currtime;
-    }
-    if ((prevtime_cooling - currtime) > NTC_COOLING_DELAY_MS) {
-      acquisinatore_send_strain_gauge_val(FROM_mV_TO_ROD_ELONGATION(ltc1865_channel2_value_in_V));
-      prevtime_cooling = currtime;
-    }
-    HAL_Delay(1);
+#if ACQUISINATOR_ID == 1
+  uint32_t currtime = HAL_GetTick();
+  if ((currtime - prevtime_rods) > NTC_COOLING_DELAY_MS) {
+    prevtime_rods = currtime;
+    acquisinatore_send_cooling_temp(NTC_COOLING_CONV(ltc1865_channel1_value_in_V / 2.0f), 0.0f, 0.0f, 0.0f);
+  }
+  acquisinatore_send_strain_gauge_val(FROM_mV_TO_ROD_ELONGATION(ltc1865_channel2_value_in_V));
+#elif ACQUISINATOR_ID == 2
+uint32_t currtime = HAL_GetTick();
+  if ((currtime - prevtime_cooling) > NTC_COOLING_DELAY_MS) {
+    acquisinatore_send_cooling_temp(0.0f, NTC_COOLING_CONV((ltc1865_channel1_value_in_V / 2.0f)), NTC_COOLING_CONV(((ltc1865_channel2_value_in_V - 0.8f) / 2.0f)), 0.0f);
+    prevtime_cooling = currtime;
+  }
+#endif    
     // acquisinatore_send_raw_voltage_values(ltc1865_channel1_value_in_V, ltc1865_channel2_value_in_V);
     // HAL_Delay(1);
     acquisinatore_set_led_code(last_set_error);
