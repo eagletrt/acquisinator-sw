@@ -8,6 +8,12 @@
 /***
  * NB: LED always on = error on CAN bus initialization
  */
+
+enum { ACQUISINATOR_SECONDARY_ACQUISINATOR_JMP_TO_BLT = 0, ACQUISINATOR_SECONDARY_LINK_DEFORMATION_SET_CALIBRATION, N_MONITORED_MESSAGES };
+
+#define CAN_MESSAGES_HANDLERS \
+    { secondary_acquisinator_jmp_to_blt_handler, secondary_link_deformation_set_calibration_handler }
+
 typedef enum {
     acquisinatore_led_code_no_error = 0,
     acquisinatore_led_code_all_ok,

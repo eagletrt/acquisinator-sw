@@ -42,7 +42,7 @@ void MX_CAN_Init(void);
 
 /* USER CODE BEGIN Prototypes */
 
-void acquisinatore_send_ltc1865_vals(float ch1, float ch2);
+int can_routine(void);
 
 /* USER CODE END Prototypes */
 

@@ -28,16 +28,44 @@
 #include "secondary_network.h"
 
 int acquisinatore_can_id;
-// #define CAN_MGR_N_MESSAGES 0
-// can_mgr_msg_t can_message_states[CAN_MGR_N_MESSAGES];
-// uint8_t can_message_new[CAN_MGR_N_MESSAGES];
+
+can_mgr_msg_t can_messages_states[N_MONITORED_MESSAGES];
+uint8_t can_messages_is_new[N_MONITORED_MESSAGES];
 
 int can_mgr_from_id_to_index(int can_id, int msg_id) {
-    if (can_id != acquisinatore_can_id) {
+    if (can_id != acquisinatore_can_id)
         return -1;
-    } else {
-        return -1;
+    switch (msg_id) {
+        case SECONDARY_ACQUISINATOR_JMP_TO_BLT_FRAME_ID:
+            return ACQUISINATOR_SECONDARY_ACQUISINATOR_JMP_TO_BLT;
+        case SECONDARY_LINK_DEFORMATION_SET_CALIBRATION_FRAME_ID:
+            return ACQUISINATOR_SECONDARY_LINK_DEFORMATION_SET_CALIBRATION;
+        default:
+            return -1;
     }
+    return -1;
+}
+
+int secondary_acquisinator_jmp_to_blt_handler(can_mgr_msg_t *msg) {
+    secondary_acquisinator_jmp_to_blt_t jmp_raw;
+    secondary_acquisinator_jmp_to_blt_converted_t jmp_converted;
+    secondary_acquisinator_jmp_to_blt_unpack(&jmp_raw, msg->data, SECONDARY_ACQUISINATOR_JMP_TO_BLT_BYTE_SIZE);
+    secondary_acquisinator_jmp_to_blt_raw_to_conversion_struct(&jmp_converted, &jmp_raw);
+    if (jmp_converted.acquisinatore_id == ACQUISINATOR_ID) {
+        HAL_NVIC_SystemReset();
+    }
+    return 0;
+}
+
+int secondary_link_deformation_set_calibration_handler(can_mgr_msg_t *msg) {
+    // start calibration routine
+    return 0;
+}
+
+int (*primary_message_handlers[N_MONITORED_MESSAGES])(can_mgr_msg_t *) = CAN_MESSAGES_HANDLERS;
+
+void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan) {
+    can_mgr_it_callback(hcan, CAN_RX_FIFO0, NULL);
 }
 
 #define CANLIB_PACK(msg_name, MSG_NAME, ntw, NTW)                  \
@@ -72,6 +100,16 @@ void acquisinatore_send_raw_voltage_values(float channel1, float channel2) {
     }
 }
 
+int can_routine(void) {
+    for (size_t msg_idx = 0; msg_idx < N_MONITORED_MESSAGES; ++msg_idx) {
+        if (can_messages_is_new[msg_idx] && (primary_message_handlers[msg_idx] != NULL)) {
+            can_messages_is_new[msg_idx] = 0;
+            (*primary_message_handlers[msg_idx])(&can_messages_states[msg_idx]);
+        }
+    }
+    return 0;
+}
+
 /* USER CODE END 0 */
 
 CAN_HandleTypeDef hcan;
@@ -101,8 +139,42 @@ void MX_CAN_Init(void) {
         Error_Handler();
     }
     /* USER CODE BEGIN CAN_Init 2 */
+    CAN_FilterTypeDef primary_filter = {
+        .FilterMode           = CAN_FILTERMODE_IDMASK,
+        .FilterIdLow          = 0 << 5,                 // Take all ids from 0
+        .FilterIdHigh         = ((1U << 11) - 1) << 5,  // to 2^11 - 1
+        .FilterMaskIdHigh     = 0 << 5,                 // Don't care on can id bits
+        .FilterMaskIdLow      = 0 << 5,                 // Don't care on can id bits
+        .FilterFIFOAssignment = CAN_FILTER_FIFO0,
+        .FilterBank           = 0,
+        .FilterScale          = CAN_FILTERSCALE_16BIT,
+        .FilterActivation     = ENABLE,
+        .SlaveStartFilterBank = 0};
+    acquisinatore_can_id = can_mgr_init(&hcan);
+    if (acquisinatore_can_id < 0) {
+        Error_Handler();
+        HAL_GPIO_WritePin(USER_LED_GPIO_Port, USER_LED_Pin, GPIO_PIN_SET);
+    }
+    if (can_mgr_config(
+            acquisinatore_can_id,
+            &primary_filter,
+            CAN_IT_RX_FIFO0_MSG_PENDING,
+            CAN_RX_FIFO0,
+            can_messages_states,
+            can_messages_is_new,
+            N_MONITORED_MESSAGES) < 0) {
+        Error_Handler();
+        HAL_GPIO_WritePin(USER_LED_GPIO_Port, USER_LED_Pin, GPIO_PIN_SET);
+    }
+
+    if (can_mgr_start(acquisinatore_can_id) < 0) {
+        Error_Handler();
+        HAL_GPIO_WritePin(USER_LED_GPIO_Port, USER_LED_Pin, GPIO_PIN_SET);
+    }
+
 #if 0
-  CAN_FilterTypeDef hfilter = {.FilterActivation = CAN_FILTER_ENABLE,
+    // Old configuration only sending messages
+    CAN_FilterTypeDef hfilter = {.FilterActivation = CAN_FILTER_ENABLE,
                                .FilterBank = 0,
                                .FilterFIFOAssignment = CAN_FILTER_FIFO0,
                                .FilterIdHigh = ((1U << 11) - 1) << 5, // Take all ids to 2^11 - 1 
@@ -110,7 +182,6 @@ void MX_CAN_Init(void) {
                                .FilterMaskIdLow = 0,
                                .FilterMode = CAN_FILTERMODE_IDMASK,
                                .FilterScale = CAN_FILTERSCALE_16BIT};
-#endif
 
     acquisinatore_can_id = can_mgr_init(&hcan);
     if (can_mgr_config(acquisinatore_can_id, NULL, 0, CAN_RX_FIFO0, NULL, NULL, 0) < 0) {
@@ -119,8 +190,8 @@ void MX_CAN_Init(void) {
     }
     if (can_mgr_start(acquisinatore_can_id) < 0) {
         HAL_GPIO_WritePin(USER_LED_GPIO_Port, USER_LED_Pin, GPIO_PIN_SET);
-        Error_Handler();
     }
+#endif
 
     /* USER CODE END CAN_Init 2 */
 }

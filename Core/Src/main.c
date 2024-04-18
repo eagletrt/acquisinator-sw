@@ -155,6 +155,7 @@ int main(void) {
         // HAL_Delay(1);
         acquisinatore_set_led_code(last_set_error);
         acquisinatore_led_code_routine();
+        can_routine();
         /* USER CODE END WHILE */
 
         /* USER CODE BEGIN 3 */
