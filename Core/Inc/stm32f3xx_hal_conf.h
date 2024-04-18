@@ -30,8 +30,8 @@ extern "C" {
 
 /* ########################## Module Selection ############################## */
 /**
- * @brief This is the list of modules to be used in the HAL driver
- */
+  * @brief This is the list of modules to be used in the HAL driver
+  */
 
 #define HAL_MODULE_ENABLED
 /*#define HAL_ADC_MODULE_ENABLED   */
@@ -76,71 +76,68 @@ extern "C" {
 #define HAL_I2C_MODULE_ENABLED
 /* ########################## HSE/HSI Values adaptation ##################### */
 /**
- * @brief Adjust the value of External High Speed oscillator (HSE) used in your
- * application. This value is used by the RCC HAL module to compute the system
- * frequency (when HSE is used as system clock source, directly or through the
- * PLL).
- */
+  * @brief Adjust the value of External High Speed oscillator (HSE) used in your application.
+  *        This value is used by the RCC HAL module to compute the system frequency
+  *        (when HSE is used as system clock source, directly or through the PLL).
+  */
 #if !defined(HSE_VALUE)
 #define HSE_VALUE ((uint32_t)16000000) /*!< Value of the External oscillator in Hz */
 #endif                                 /* HSE_VALUE */
 
 /**
- * @brief In the following line adjust the External High Speed oscillator (HSE)
- * Startup Timeout value
- */
+  * @brief In the following line adjust the External High Speed oscillator (HSE) Startup
+  *        Timeout value
+  */
 #if !defined(HSE_STARTUP_TIMEOUT)
 #define HSE_STARTUP_TIMEOUT ((uint32_t)100) /*!< Time out for HSE start up, in ms */
 #endif                                      /* HSE_STARTUP_TIMEOUT */
 
 /**
- * @brief Internal High Speed oscillator (HSI) value.
- *        This value is used by the RCC HAL module to compute the system
- * frequency (when HSI is used as system clock source, directly or through the
- * PLL).
- */
+  * @brief Internal High Speed oscillator (HSI) value.
+  *        This value is used by the RCC HAL module to compute the system frequency
+  *        (when HSI is used as system clock source, directly or through the PLL).
+  */
 #if !defined(HSI_VALUE)
 #define HSI_VALUE ((uint32_t)8000000) /*!< Value of the Internal oscillator in Hz*/
 #endif                                /* HSI_VALUE */
 
 /**
- * @brief In the following line adjust the Internal High Speed oscillator (HSI)
- * Startup Timeout value
- */
+  * @brief In the following line adjust the Internal High Speed oscillator (HSI) Startup
+  *        Timeout value
+  */
 #if !defined(HSI_STARTUP_TIMEOUT)
 #define HSI_STARTUP_TIMEOUT ((uint32_t)5000) /*!< Time out for HSI start up */
 #endif                                       /* HSI_STARTUP_TIMEOUT */
 
 /**
- * @brief Internal Low Speed oscillator (LSI) value.
- */
+  * @brief Internal Low Speed oscillator (LSI) value.
+  */
 #if !defined(LSI_VALUE)
 #define LSI_VALUE ((uint32_t)40000)
-#endif /* LSI_VALUE */ /*!< Value of the Internal Low Speed oscillator in Hz   \
-                        The real value may vary depending on the variations    \
-                        in voltage and temperature.  */
+#endif /* LSI_VALUE */ /*!< Value of the Internal Low Speed oscillator in Hz
+                                             The real value may vary depending on the variations
+                                             in voltage and temperature.  */
 /**
- * @brief External Low Speed oscillator (LSE) value.
- */
+  * @brief External Low Speed oscillator (LSE) value.
+  */
 #if !defined(LSE_VALUE)
 #define LSE_VALUE ((uint32_t)32768) /*!< Value of the External Low Speed oscillator in Hz */
 #endif                              /* LSE_VALUE */
 
 /**
- * @brief Time out for LSE start up value in ms.
- */
+  * @brief Time out for LSE start up value in ms.
+  */
 #if !defined(LSE_STARTUP_TIMEOUT)
 #define LSE_STARTUP_TIMEOUT ((uint32_t)5000) /*!< Time out for LSE start up, in ms */
 #endif                                       /* LSE_STARTUP_TIMEOUT */
 
 /**
- * @brief External clock source for I2S peripheral
- *        This value is used by the I2S HAL module to compute the I2S clock
- * source frequency, this source is inserted directly through I2S_CKIN pad.
- *        - External clock generated through external PLL component on EVAL 303
- * (based on MCO or crystal)
- *        - External clock not generated on EVAL 373
- */
+  * @brief External clock source for I2S peripheral
+  *        This value is used by the I2S HAL module to compute the I2S clock source
+  *        frequency, this source is inserted directly through I2S_CKIN pad.
+  *        - External clock generated through external PLL component on EVAL 303 (based on MCO or crystal)
+  *        - External clock not generated on EVAL 373
+  */
 #if !defined(EXTERNAL_CLOCK_VALUE)
 #define EXTERNAL_CLOCK_VALUE ((uint32_t)8000000) /*!< Value of the External oscillator in Hz*/
 #endif                                           /* EXTERNAL_CLOCK_VALUE */
@@ -150,8 +147,8 @@ extern "C" {
 
 /* ########################### System Configuration ######################### */
 /**
- * @brief This is the HAL system configuration section
- */
+  * @brief This is the HAL system configuration section
+  */
 
 #define VDD_VALUE                ((uint32_t)3300) /*!< Value of VDD in mv */
 #define TICK_INT_PRIORITY        ((uint32_t)15)   /*!< tick interrupt priority (lowest by default)  */
@@ -188,15 +185,15 @@ extern "C" {
 
 /* ########################## Assert Selection ############################## */
 /**
- * @brief Uncomment the line below to expanse the "assert_param" macro in the
- *        HAL drivers code
- */
+  * @brief Uncomment the line below to expanse the "assert_param" macro in the
+  *        HAL drivers code
+  */
 /* #define USE_FULL_ASSERT    1U */
 
 /* Includes ------------------------------------------------------------------*/
 /**
- * @brief Include module's header file
- */
+  * @brief Include module's header file
+  */
 
 #ifdef HAL_RCC_MODULE_ENABLED
 #include "stm32f3xx_hal_rcc.h"
@@ -341,13 +338,13 @@ extern "C" {
 /* Exported macro ------------------------------------------------------------*/
 #ifdef USE_FULL_ASSERT
 /**
- * @brief  The assert_param macro is used for function's parameters check.
- * @param  expr If expr is false, it calls assert_failed function
- *         which reports the name of the source file and the source
- *         line number of the call that failed.
- *         If expr is true, it returns no value.
- * @retval None
- */
+  * @brief  The assert_param macro is used for function's parameters check.
+  * @param  expr If expr is false, it calls assert_failed function
+  *         which reports the name of the source file and the source
+  *         line number of the call that failed.
+  *         If expr is true, it returns no value.
+  * @retval None
+  */
 #define assert_param(expr) ((expr) ? (void)0U : assert_failed((uint8_t *)__FILE__, __LINE__))
 /* Exported functions ------------------------------------------------------- */
 void assert_failed(uint8_t *file, uint32_t line);
