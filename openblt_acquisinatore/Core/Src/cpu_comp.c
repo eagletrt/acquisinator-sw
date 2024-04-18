@@ -1,7 +1,7 @@
 /************************************************************************************/ /**
-* \file         Source/cpu.h
-* \brief        Bootloader cpu module header file.
-* \ingroup      Core
+* \file         Source/ARMCM4_STM32F3/GCC/cpu_comp.c
+* \brief        Bootloader cpu module source file.
+* \ingroup      Target_ARMCM4_STM32F3
 * \internal
 *----------------------------------------------------------------------------------------
 *                          C O P Y R I G H T
@@ -25,18 +25,28 @@
 *
 * \endinternal
 ****************************************************************************************/
-#ifndef CPU_H
-#define CPU_H
 
 /****************************************************************************************
-* Function prototypes
+* Include files
 ****************************************************************************************/
-void CpuInit(void);
-void CpuStartUserProgram(void);
-void CpuMemCopy(blt_addr dest, blt_addr src, blt_int16u len);
-void CpuMemSet(blt_addr dest, blt_int8u value, blt_int16u len);
-void CpuIrqDisable(void);
-void CpuIrqEnable(void);
+#include "boot.h" /* bootloader generic header          */
 
-#endif /* CPU_H */
-/*********************************** end of cpu.h **************************************/
+/************************************************************************************/ /**
+** \brief     Disable global interrupts.
+** \return    none.
+**
+****************************************************************************************/
+void CpuIrqDisable(void) {
+    __asm volatile("cpsid i");
+} /*** end of CpuIrqDisable ***/
+
+/************************************************************************************/ /**
+** \brief     Enable global interrupts.
+** \return    none.
+**
+****************************************************************************************/
+void CpuIrqEnable(void) {
+    __asm volatile("cpsie i");
+} /*** end of CpuIrqEnable ***/
+
+/*********************************** end of cpu_comp.c *********************************/

@@ -1,7 +1,7 @@
 /************************************************************************************/ /**
-* \file         Source/cpu.h
-* \brief        Bootloader cpu module header file.
-* \ingroup      Core
+* \file         Demo/ARMCM4_STM32F3_Nucleo_F303K8_GCC/Boot/led.h
+* \brief        LED driver header file.
+* \ingroup      Boot_ARMCM4_STM32F3_Nucleo_F303K8_GCC
 * \internal
 *----------------------------------------------------------------------------------------
 *                          C O P Y R I G H T
@@ -20,23 +20,20 @@
 * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
 * PURPOSE. See the GNU General Public License for more details.
 *
-* You have received a copy of the GNU General Public License along with OpenBLT. It
+* You have received a copy of the GNU General Public License along with OpenBLT. It 
 * should be located in ".\Doc\license.html". If not, contact Feaser to obtain a copy.
 *
 * \endinternal
 ****************************************************************************************/
-#ifndef CPU_H
-#define CPU_H
+#ifndef LED_H
+#define LED_H
 
 /****************************************************************************************
 * Function prototypes
 ****************************************************************************************/
-void CpuInit(void);
-void CpuStartUserProgram(void);
-void CpuMemCopy(blt_addr dest, blt_addr src, blt_int16u len);
-void CpuMemSet(blt_addr dest, blt_int8u value, blt_int16u len);
-void CpuIrqDisable(void);
-void CpuIrqEnable(void);
+void LedBlinkInit(blt_int16u interval_ms);
+void LedBlinkTask(void);
+void LedBlinkExit(void);
 
-#endif /* CPU_H */
-/*********************************** end of cpu.h **************************************/
+#endif /* LED_H */
+/*********************************** end of led.h **************************************/

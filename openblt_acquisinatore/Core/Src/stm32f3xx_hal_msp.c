@@ -60,21 +60,19 @@
 /**
   * Initializes the Global MSP.
   */
-void HAL_MspInit(void)
-{
+void HAL_MspInit(void) {
+    /* USER CODE BEGIN MspInit 0 */
 
-  /* USER CODE BEGIN MspInit 0 */
+    /* USER CODE END MspInit 0 */
 
-  /* USER CODE END MspInit 0 */
+    __HAL_RCC_SYSCFG_CLK_ENABLE();
+    __HAL_RCC_PWR_CLK_ENABLE();
 
-  __HAL_RCC_SYSCFG_CLK_ENABLE();
-  __HAL_RCC_PWR_CLK_ENABLE();
+    /* System interrupt init*/
 
-  /* System interrupt init*/
+    /* USER CODE BEGIN MspInit 1 */
 
-  /* USER CODE BEGIN MspInit 1 */
-
-  /* USER CODE END MspInit 1 */
+    /* USER CODE END MspInit 1 */
 }
 
 /**
@@ -83,43 +81,40 @@ void HAL_MspInit(void)
 * @param hcan: CAN handle pointer
 * @retval None
 */
-void HAL_CAN_MspInit(CAN_HandleTypeDef* hcan)
-{
-  GPIO_InitTypeDef GPIO_InitStruct = {0};
-  if(hcan->Instance==CAN)
-  {
-  /* USER CODE BEGIN CAN_MspInit 0 */
+void HAL_CAN_MspInit(CAN_HandleTypeDef *hcan) {
+    GPIO_InitTypeDef GPIO_InitStruct = {0};
+    if (hcan->Instance == CAN) {
+        /* USER CODE BEGIN CAN_MspInit 0 */
 
-  /* USER CODE END CAN_MspInit 0 */
-    /* Peripheral clock enable */
-    __HAL_RCC_CAN1_CLK_ENABLE();
+        /* USER CODE END CAN_MspInit 0 */
+        /* Peripheral clock enable */
+        __HAL_RCC_CAN1_CLK_ENABLE();
 
-    __HAL_RCC_GPIOA_CLK_ENABLE();
-    /**CAN GPIO Configuration
+        __HAL_RCC_GPIOA_CLK_ENABLE();
+        /**CAN GPIO Configuration
     PA11     ------> CAN_RX
     PA12     ------> CAN_TX
     */
-    GPIO_InitStruct.Pin = GPIO_PIN_11|GPIO_PIN_12;
-    GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-    GPIO_InitStruct.Pull = GPIO_NOPULL;
-    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
-    GPIO_InitStruct.Alternate = GPIO_AF9_CAN;
-    HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+        GPIO_InitStruct.Pin       = GPIO_PIN_11 | GPIO_PIN_12;
+        GPIO_InitStruct.Mode      = GPIO_MODE_AF_PP;
+        GPIO_InitStruct.Pull      = GPIO_NOPULL;
+        GPIO_InitStruct.Speed     = GPIO_SPEED_FREQ_HIGH;
+        GPIO_InitStruct.Alternate = GPIO_AF9_CAN;
+        HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
-    /* CAN interrupt Init */
-    HAL_NVIC_SetPriority(CAN_TX_IRQn, 0, 0);
-    HAL_NVIC_EnableIRQ(CAN_TX_IRQn);
-    HAL_NVIC_SetPriority(CAN_RX0_IRQn, 0, 0);
-    HAL_NVIC_EnableIRQ(CAN_RX0_IRQn);
-    HAL_NVIC_SetPriority(CAN_RX1_IRQn, 0, 0);
-    HAL_NVIC_EnableIRQ(CAN_RX1_IRQn);
-    HAL_NVIC_SetPriority(CAN_SCE_IRQn, 0, 0);
-    HAL_NVIC_EnableIRQ(CAN_SCE_IRQn);
-  /* USER CODE BEGIN CAN_MspInit 1 */
+        /* CAN interrupt Init */
+        HAL_NVIC_SetPriority(CAN_TX_IRQn, 0, 0);
+        HAL_NVIC_EnableIRQ(CAN_TX_IRQn);
+        HAL_NVIC_SetPriority(CAN_RX0_IRQn, 0, 0);
+        HAL_NVIC_EnableIRQ(CAN_RX0_IRQn);
+        HAL_NVIC_SetPriority(CAN_RX1_IRQn, 0, 0);
+        HAL_NVIC_EnableIRQ(CAN_RX1_IRQn);
+        HAL_NVIC_SetPriority(CAN_SCE_IRQn, 0, 0);
+        HAL_NVIC_EnableIRQ(CAN_SCE_IRQn);
+        /* USER CODE BEGIN CAN_MspInit 1 */
 
-  /* USER CODE END CAN_MspInit 1 */
-  }
-
+        /* USER CODE END CAN_MspInit 1 */
+    }
 }
 
 /**
@@ -128,32 +123,29 @@ void HAL_CAN_MspInit(CAN_HandleTypeDef* hcan)
 * @param hcan: CAN handle pointer
 * @retval None
 */
-void HAL_CAN_MspDeInit(CAN_HandleTypeDef* hcan)
-{
-  if(hcan->Instance==CAN)
-  {
-  /* USER CODE BEGIN CAN_MspDeInit 0 */
+void HAL_CAN_MspDeInit(CAN_HandleTypeDef *hcan) {
+    if (hcan->Instance == CAN) {
+        /* USER CODE BEGIN CAN_MspDeInit 0 */
 
-  /* USER CODE END CAN_MspDeInit 0 */
-    /* Peripheral clock disable */
-    __HAL_RCC_CAN1_CLK_DISABLE();
+        /* USER CODE END CAN_MspDeInit 0 */
+        /* Peripheral clock disable */
+        __HAL_RCC_CAN1_CLK_DISABLE();
 
-    /**CAN GPIO Configuration
+        /**CAN GPIO Configuration
     PA11     ------> CAN_RX
     PA12     ------> CAN_TX
     */
-    HAL_GPIO_DeInit(GPIOA, GPIO_PIN_11|GPIO_PIN_12);
+        HAL_GPIO_DeInit(GPIOA, GPIO_PIN_11 | GPIO_PIN_12);
 
-    /* CAN interrupt DeInit */
-    HAL_NVIC_DisableIRQ(CAN_TX_IRQn);
-    HAL_NVIC_DisableIRQ(CAN_RX0_IRQn);
-    HAL_NVIC_DisableIRQ(CAN_RX1_IRQn);
-    HAL_NVIC_DisableIRQ(CAN_SCE_IRQn);
-  /* USER CODE BEGIN CAN_MspDeInit 1 */
+        /* CAN interrupt DeInit */
+        HAL_NVIC_DisableIRQ(CAN_TX_IRQn);
+        HAL_NVIC_DisableIRQ(CAN_RX0_IRQn);
+        HAL_NVIC_DisableIRQ(CAN_RX1_IRQn);
+        HAL_NVIC_DisableIRQ(CAN_SCE_IRQn);
+        /* USER CODE BEGIN CAN_MspDeInit 1 */
 
-  /* USER CODE END CAN_MspDeInit 1 */
-  }
-
+        /* USER CODE END CAN_MspDeInit 1 */
+    }
 }
 
 /**
@@ -162,23 +154,20 @@ void HAL_CAN_MspDeInit(CAN_HandleTypeDef* hcan)
 * @param htim_base: TIM_Base handle pointer
 * @retval None
 */
-void HAL_TIM_Base_MspInit(TIM_HandleTypeDef* htim_base)
-{
-  if(htim_base->Instance==TIM2)
-  {
-  /* USER CODE BEGIN TIM2_MspInit 0 */
+void HAL_TIM_Base_MspInit(TIM_HandleTypeDef *htim_base) {
+    if (htim_base->Instance == TIM2) {
+        /* USER CODE BEGIN TIM2_MspInit 0 */
 
-  /* USER CODE END TIM2_MspInit 0 */
-    /* Peripheral clock enable */
-    __HAL_RCC_TIM2_CLK_ENABLE();
-    /* TIM2 interrupt Init */
-    HAL_NVIC_SetPriority(TIM2_IRQn, 0, 0);
-    HAL_NVIC_EnableIRQ(TIM2_IRQn);
-  /* USER CODE BEGIN TIM2_MspInit 1 */
+        /* USER CODE END TIM2_MspInit 0 */
+        /* Peripheral clock enable */
+        __HAL_RCC_TIM2_CLK_ENABLE();
+        /* TIM2 interrupt Init */
+        HAL_NVIC_SetPriority(TIM2_IRQn, 0, 0);
+        HAL_NVIC_EnableIRQ(TIM2_IRQn);
+        /* USER CODE BEGIN TIM2_MspInit 1 */
 
-  /* USER CODE END TIM2_MspInit 1 */
-  }
-
+        /* USER CODE END TIM2_MspInit 1 */
+    }
 }
 
 /**
@@ -187,23 +176,20 @@ void HAL_TIM_Base_MspInit(TIM_HandleTypeDef* htim_base)
 * @param htim_base: TIM_Base handle pointer
 * @retval None
 */
-void HAL_TIM_Base_MspDeInit(TIM_HandleTypeDef* htim_base)
-{
-  if(htim_base->Instance==TIM2)
-  {
-  /* USER CODE BEGIN TIM2_MspDeInit 0 */
+void HAL_TIM_Base_MspDeInit(TIM_HandleTypeDef *htim_base) {
+    if (htim_base->Instance == TIM2) {
+        /* USER CODE BEGIN TIM2_MspDeInit 0 */
 
-  /* USER CODE END TIM2_MspDeInit 0 */
-    /* Peripheral clock disable */
-    __HAL_RCC_TIM2_CLK_DISABLE();
+        /* USER CODE END TIM2_MspDeInit 0 */
+        /* Peripheral clock disable */
+        __HAL_RCC_TIM2_CLK_DISABLE();
 
-    /* TIM2 interrupt DeInit */
-    HAL_NVIC_DisableIRQ(TIM2_IRQn);
-  /* USER CODE BEGIN TIM2_MspDeInit 1 */
+        /* TIM2 interrupt DeInit */
+        HAL_NVIC_DisableIRQ(TIM2_IRQn);
+        /* USER CODE BEGIN TIM2_MspDeInit 1 */
 
-  /* USER CODE END TIM2_MspDeInit 1 */
-  }
-
+        /* USER CODE END TIM2_MspDeInit 1 */
+    }
 }
 
 /* USER CODE BEGIN 1 */

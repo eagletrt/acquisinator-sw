@@ -37,6 +37,7 @@ cFlags:
   - -Wall
   - -fdata-sections
   - -ffunction-sections
+  - -DUSE_FULL_LL_DRIVER
 
 cxxFlags: []
 assemblyFlags: 
