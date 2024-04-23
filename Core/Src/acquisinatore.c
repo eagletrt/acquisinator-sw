@@ -1,10 +1,4 @@
-#include "lpfilter.h"
-
-// static uint16_t current_mean = 0;
-// static uint16_t history[MOVING_AVG_WINDOW] = {0};
-// static uint64_t hsum = 0;
-// static size_t history_len = 0;
-// static int completed_loop = 0;
+#include "acquisinatore.h"
 
 uint16_t apply_moving_avg(
     uint16_t new_value,

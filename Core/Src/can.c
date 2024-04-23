@@ -23,6 +23,7 @@
 /* USER CODE BEGIN 0 */
 
 #include "acquisinator_config.h"
+#include "acquisinatore.h"
 #include "can_manager.h"
 #include "error_codes.h"
 #include "secondary_network.h"
@@ -57,8 +58,26 @@ int secondary_acquisinator_jmp_to_blt_handler(can_mgr_msg_t *msg) {
     return 0;
 }
 
+extern bool calibration_ammo_pos_flag;
+extern float calibration_cooling_temp_target;
+extern bool calibration_cooling_temp_flag;
+extern bool calibration_reset_link_deformation_flag;
+
+// TODO: add this message into the canlib and handle it appropriately
+int secondary_ammo_pos_set_calibration_handler(can_mgr_msg_t *msg) {
+    calibration_ammo_pos_flag = true;
+    return 0;
+}
+
+// TODO: add this message into the canlib and handle it appropriately
+int secondary_cooling_temp_set_calibration_handler(can_mgr_msg_t *msg) {
+    // calibration_cooling_temp_target = ; // TODO
+    calibration_cooling_temp_flag = true;
+    return 0;
+}
+
 int secondary_link_deformation_set_calibration_handler(can_mgr_msg_t *msg) {
-    // start calibration routine
+    calibration_reset_link_deformation_flag = true;
     return 0;
 }
 
@@ -76,8 +95,9 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan) {
     ntw##_##msg_name##_conversion_to_raw_struct(&raw, &converted); \
     ntw##_##msg_name##_pack(msg_to_be_sent.data, &raw, msg_to_be_sent.size);
 
-void acquisinatore_send_cooling_temp(long double t1, long double t2, long double t3, long double t4) {
-    secondary_cooling_temp_converted_t converted = {.top_left = t1, .top_right = t2, .bottom_right = t3, .bottom_left = t4};
+void acquisinatore_send_cooling_temp(long double top_left, long double top_right, long double bottom_right, long double bottom_left) {
+    secondary_cooling_temp_converted_t converted = {
+        .top_left = top_left, .top_right = top_right, .bottom_right = bottom_right, .bottom_left = bottom_left};
     CANLIB_PACK(cooling_temp, COOLING_TEMP, secondary, SECONDARY);
     if (can_mgr_send(acquisinatore_can_id, &msg_to_be_sent) < 0) {
         acquisinatore_set_led_code(acquisinatore_led_code_can_not_working);

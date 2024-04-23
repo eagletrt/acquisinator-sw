@@ -22,7 +22,7 @@
 
 /* USER CODE BEGIN 0 */
 
-#include "lpfilter.h"
+#include "acquisinatore.h"
 
 #define MOVING_AVG_WINDOW 10
 

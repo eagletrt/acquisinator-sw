@@ -25,8 +25,8 @@
 *
 * \endinternal
 ****************************************************************************************/
-#ifndef ASSERT_H
-#define ASSERT_H
+#ifndef ASSERTS_OPENBLT_H
+#define ASSERTS_OPENBLT_H
 
 /****************************************************************************************
 * Macro definitions
@@ -57,5 +57,5 @@
 void AssertFailure(blt_char *file, blt_int32u line);
 #endif
 
-#endif /* ASSERT_H */
+#endif /* ASSERTS_OPENBLT_H */
 /*********************************** end of assert.h ***********************************/
