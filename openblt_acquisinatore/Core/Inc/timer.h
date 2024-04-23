@@ -1,4 +1,4 @@
-/************************************************************************************/ /**
+/************************************************************************************//**
 * \file         Source/timer.h
 * \brief        Bootloader timer driver header file.
 * \ingroup      Core
@@ -31,10 +31,11 @@
 /****************************************************************************************
 * Function prototypes
 ****************************************************************************************/
-void TimerInit(void);
-void TimerUpdate(void);
+void       TimerInit(void);
+void       TimerUpdate(void);
 blt_int32u TimerGet(void);
-void TimerReset(void);
+void       TimerReset(void);
+
 
 #endif /* TIMER_H */
 /*********************************** end of timer.h ************************************/

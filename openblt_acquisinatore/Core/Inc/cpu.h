@@ -1,4 +1,4 @@
-/************************************************************************************/ /**
+/************************************************************************************//**
 * \file         Source/cpu.h
 * \brief        Bootloader cpu module header file.
 * \ingroup      Core
@@ -28,6 +28,7 @@
 #ifndef CPU_H
 #define CPU_H
 
+
 /****************************************************************************************
 * Function prototypes
 ****************************************************************************************/
@@ -37,6 +38,7 @@ void CpuMemCopy(blt_addr dest, blt_addr src, blt_int16u len);
 void CpuMemSet(blt_addr dest, blt_int8u value, blt_int16u len);
 void CpuIrqDisable(void);
 void CpuIrqEnable(void);
+
 
 #endif /* CPU_H */
 /*********************************** end of cpu.h **************************************/

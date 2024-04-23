@@ -1,4 +1,4 @@
-/************************************************************************************/ /**
+/************************************************************************************//**
 * \file         Source/plausibility.h
 * \brief        Bootloader plausibility check header file, for checking the configuration
 *               at compile time.
@@ -57,58 +57,60 @@
 #endif
 
 #ifndef BOOT_CPU_USER_PROGRAM_START_HOOK
-#define BOOT_CPU_USER_PROGRAM_START_HOOK (0)
+#define BOOT_CPU_USER_PROGRAM_START_HOOK   (0)
 #endif
 
 #if (BOOT_CPU_USER_PROGRAM_START_HOOK < 0) || (BOOT_CPU_USER_PROGRAM_START_HOOK > 1)
 #error "BOOT_CPU_USER_PROGRAM_START_HOOK must be 0 or 1"
 #endif
 
+
 /****************************************************************************************
 *   C O M M U N I C A T I O N   I N T E R F A C E   C O N F I G U R A T I O N   C H E C K
 ****************************************************************************************/
 #ifndef BOOT_COM_CAN_TX_MAX_DATA
-#define BOOT_COM_CAN_TX_MAX_DATA (0)
+#define BOOT_COM_CAN_TX_MAX_DATA       (0)
 #endif
 
 #ifndef BOOT_COM_CAN_RX_MAX_DATA
-#define BOOT_COM_CAN_RX_MAX_DATA (0)
+#define BOOT_COM_CAN_RX_MAX_DATA       (0)
 #endif
 
 #ifndef BOOT_COM_RS232_TX_MAX_DATA
-#define BOOT_COM_RS232_TX_MAX_DATA (0)
+#define BOOT_COM_RS232_TX_MAX_DATA     (0)
 #endif
 
 #ifndef BOOT_COM_RS232_RX_MAX_DATA
-#define BOOT_COM_RS232_RX_MAX_DATA (0)
+#define BOOT_COM_RS232_RX_MAX_DATA     (0)
 #endif
 
 #ifndef BOOT_COM_MBRTU_TX_MAX_DATA
-#define BOOT_COM_MBRTU_TX_MAX_DATA (0)
+#define BOOT_COM_MBRTU_TX_MAX_DATA      (0)
 #endif
 
 #ifndef BOOT_COM_MBRTU_RX_MAX_DATA
-#define BOOT_COM_MBRTU_RX_MAX_DATA (0)
+#define BOOT_COM_MBRTU_RX_MAX_DATA      (0)
 #endif
 
 #ifndef BOOT_COM_USB_TX_MAX_DATA
-#define BOOT_COM_USB_TX_MAX_DATA (0)
+#define BOOT_COM_USB_TX_MAX_DATA       (0)
 #endif
 
 #ifndef BOOT_COM_USB_RX_MAX_DATA
-#define BOOT_COM_USB_RX_MAX_DATA (0)
+#define BOOT_COM_USB_RX_MAX_DATA       (0)
 #endif
 
 #ifndef BOOT_COM_NET_TX_MAX_DATA
-#define BOOT_COM_NET_TX_MAX_DATA (0)
+#define BOOT_COM_NET_TX_MAX_DATA       (0)
 #endif
 
 #ifndef BOOT_COM_NET_RX_MAX_DATA
-#define BOOT_COM_NET_RX_MAX_DATA (0)
+#define BOOT_COM_NET_RX_MAX_DATA       (0)
 #endif
 
+
 #ifndef BOOT_COM_CAN_ENABLE
-#define BOOT_COM_CAN_ENABLE (0)
+#define BOOT_COM_CAN_ENABLE             (0)
 #endif
 
 #if (BOOT_COM_CAN_ENABLE > 0)
@@ -165,7 +167,7 @@
 #endif /* BOOT_COM_CAN_ENABLE > 0 */
 
 #ifndef BOOT_COM_RS232_ENABLE
-#define BOOT_COM_RS232_ENABLE (0)
+#define BOOT_COM_RS232_ENABLE           (0)
 #endif
 
 #if (BOOT_COM_RS232_ENABLE > 0)
@@ -212,7 +214,7 @@
 #endif /* BOOT_COM_RS232_ENABLE > 0 */
 
 #ifndef BOOT_COM_MBRTU_ENABLE
-#define BOOT_COM_MBRTU_ENABLE (0)
+#define BOOT_COM_MBRTU_ENABLE           (0)
 #endif
 
 #if (BOOT_COM_MBRTU_ENABLE > 0)
@@ -288,7 +290,7 @@
 #endif /* BOOT_COM_MBRTU_ENABLE > 0 */
 
 #ifndef BOOT_COM_USB_ENABLE
-#define BOOT_COM_USB_ENABLE (0)
+#define BOOT_COM_USB_ENABLE             (0)
 #endif
 
 #if (BOOT_COM_USB_ENABLE > 0)
@@ -317,7 +319,7 @@
 #endif /* BOOT_COM_USB_ENABLE > 0 */
 
 #ifndef BOOT_COM_NET_ENABLE
-#define BOOT_COM_NET_ENABLE (0)
+#define BOOT_COM_NET_ENABLE             (0)
 #endif
 
 #if (BOOT_COM_NET_ENABLE > 0)
@@ -354,7 +356,7 @@
 #endif
 
 #ifndef BOOT_COM_NET_DHCP_ENABLE
-#define BOOT_COM_NET_DHCP_ENABLE (0)
+#define BOOT_COM_NET_DHCP_ENABLE        (0)
 #endif
 
 #if (BOOT_COM_NET_DHCP_ENABLE < 0) || (BOOT_COM_NET_DHCP_ENABLE > 1)
@@ -422,7 +424,7 @@
 #endif
 
 #ifndef BOOT_COM_NET_DEFERRED_INIT_ENABLE
-#define BOOT_COM_NET_DEFERRED_INIT_ENABLE (0)
+#define BOOT_COM_NET_DEFERRED_INIT_ENABLE   (0)
 #endif
 
 #if (BOOT_COM_NET_DEFERRED_INIT_ENABLE < 0) || (BOOT_COM_NET_DEFERRED_INIT_ENABLE > 1)
@@ -432,23 +434,23 @@
 #endif /* BOOT_COM_NET_ENABLE > 0 */
 
 #if (BOOT_COM_NET_DEFERRED_INIT_ENABLE == 1)
-#define BOOT_COM_DEFERRED_INIT_ENABLE (1)
+#define BOOT_COM_DEFERRED_INIT_ENABLE       (1)
 #else
-#define BOOT_COM_DEFERRED_INIT_ENABLE (0)
+#define BOOT_COM_DEFERRED_INIT_ENABLE       (0)
 #endif
 
-#if (BOOT_COM_CAN_ENABLE == 1) || (BOOT_COM_RS232_ENABLE == 1) || (BOOT_COM_MBRTU_ENABLE == 1) || (BOOT_COM_NET_ENABLE == 1) || \
-    (BOOT_COM_USB_ENABLE == 1)
-#define BOOT_COM_ENABLE (1)
+#if (BOOT_COM_CAN_ENABLE == 1) || (BOOT_COM_RS232_ENABLE == 1) || (BOOT_COM_MBRTU_ENABLE == 1) || (BOOT_COM_NET_ENABLE == 1) || (BOOT_COM_USB_ENABLE == 1)
+#define BOOT_COM_ENABLE   (1)
 #else
-#define BOOT_COM_ENABLE (0)
+#define BOOT_COM_ENABLE   (0)
 #endif
+
 
 /****************************************************************************************
 *   F I L E   S Y S T E M   I N T E R F A C E   C O N F I G U R A T I O N   C H E C K
 ****************************************************************************************/
 #ifndef BOOT_FILE_SYS_ENABLE
-#define BOOT_FILE_SYS_ENABLE (0)
+#define BOOT_FILE_SYS_ENABLE      (0)
 #endif
 
 #if (BOOT_FILE_SYS_ENABLE < 0) || (BOOT_FILE_SYS_ENABLE > 1)
@@ -457,7 +459,7 @@
 
 #if (BOOT_FILE_SYS_ENABLE > 0)
 #ifndef BOOT_FILE_LOGGING_ENABLE
-#define BOOT_FILE_LOGGING_ENABLE (0)
+#define BOOT_FILE_LOGGING_ENABLE         (0)
 #endif
 
 #if (BOOT_FILE_LOGGING_ENABLE < 0) || (BOOT_FILE_LOGGING_ENABLE > 1)
@@ -465,7 +467,7 @@
 #endif
 
 #ifndef BOOT_FILE_ERROR_HOOK_ENABLE
-#define BOOT_FILE_ERROR_HOOK_ENABLE (0)
+#define BOOT_FILE_ERROR_HOOK_ENABLE      (0)
 #endif
 
 #if (BOOT_FILE_ERROR_HOOK_ENABLE < 0) || (BOOT_FILE_ERROR_HOOK_ENABLE > 1)
@@ -473,7 +475,7 @@
 #endif
 
 #ifndef BOOT_FILE_STARTED_HOOK_ENABLE
-#define BOOT_FILE_STARTED_HOOK_ENABLE (0)
+#define BOOT_FILE_STARTED_HOOK_ENABLE    (0)
 #endif
 
 #if (BOOT_FILE_STARTED_HOOK_ENABLE < 0) || (BOOT_FILE_STARTED_HOOK_ENABLE > 1)
@@ -481,7 +483,7 @@
 #endif
 
 #ifndef BOOT_FILE_COMPLETED_HOOK_ENABLE
-#define BOOT_FILE_COMPLETED_HOOK_ENABLE (0)
+#define BOOT_FILE_COMPLETED_HOOK_ENABLE  (0)
 #endif
 
 #if (BOOT_FILE_COMPLETED_HOOK_ENABLE < 0) || (BOOT_FILE_COMPLETED_HOOK_ENABLE > 1)
@@ -489,33 +491,36 @@
 #endif
 #endif /* BOOT_FILE_SYS_ENABLE > 0 */
 
+
 /****************************************************************************************
 *   B A C K D O O R   E N T R Y   C H E C K
 ****************************************************************************************/
 #ifndef BOOT_BACKDOOR_HOOKS_ENABLE
-#define BOOT_BACKDOOR_HOOKS_ENABLE (0)
+#define BOOT_BACKDOOR_HOOKS_ENABLE      (0)
 #endif
 
 #if (BOOT_BACKDOOR_HOOKS_ENABLE < 0) || (BOOT_BACKDOOR_HOOKS_ENABLE > 1)
 #error "BOOT_BACKDOOR_HOOKS_ENABLE must be 0 or 1"
 #endif
 
+
 /****************************************************************************************
 *   F L A S H   D R I V E R   C O N F I G U R A T I O N   C H E C K
 ****************************************************************************************/
 #ifndef BOOT_FLASH_CRYPTO_HOOKS_ENABLE
-#define BOOT_FLASH_CRYPTO_HOOKS_ENABLE (0)
+#define BOOT_FLASH_CRYPTO_HOOKS_ENABLE  (0)
 #endif
 
 #if (BOOT_FLASH_CRYPTO_HOOKS_ENABLE < 0) || (BOOT_FLASH_CRYPTO_HOOKS_ENABLE > 1)
 #error "BOOT_FLASH_CRYPTO_HOOKS_ENABLE must be 0 or 1"
 #endif
 
+
 /****************************************************************************************
 *   N V M   D R I V E R   C O N F I G U R A T I O N   C H E C K
 ****************************************************************************************/
 #ifndef BOOT_NVM_HOOKS_ENABLE
-#define BOOT_NVM_HOOKS_ENABLE (0)
+#define BOOT_NVM_HOOKS_ENABLE           (0)
 #endif
 
 #if (BOOT_NVM_HOOKS_ENABLE < 0) || (BOOT_NVM_HOOKS_ENABLE > 1)
@@ -531,29 +536,31 @@
 #endif
 
 #ifndef BOOT_NVM_CHECKSUM_HOOKS_ENABLE
-#define BOOT_NVM_CHECKSUM_HOOKS_ENABLE (0)
+#define BOOT_NVM_CHECKSUM_HOOKS_ENABLE  (0)
 #endif
 
 #if (BOOT_NVM_CHECKSUM_HOOKS_ENABLE < 0) || (BOOT_NVM_CHECKSUM_HOOKS_ENABLE > 1)
 #error "BOOT_NVM_CHECKSUM_HOOKS_ENABLE must be 0 or 1"
 #endif
 
+
 /****************************************************************************************
 *   W A T C H D O G   D R I V E R   C O N F I G U R A T I O N   C H E C K
 ****************************************************************************************/
 #ifndef BOOT_COP_HOOKS_ENABLE
-#define BOOT_COP_HOOKS_ENABLE (0)
+#define BOOT_COP_HOOKS_ENABLE           (0)
 #endif
 
 #if (BOOT_COP_HOOKS_ENABLE < 0) || (BOOT_COP_HOOKS_ENABLE > 1)
 #error "BOOT_COP_HOOKS_ENABLE must be 0 or 1"
 #endif
 
+
 /****************************************************************************************
 *   X C P   M O D U L E   C O N F I G U R A T I O N   C H E C K
 ****************************************************************************************/
 #ifndef BOOT_XCP_SEED_KEY_ENABLE
-#define BOOT_XCP_SEED_KEY_ENABLE (0)
+#define BOOT_XCP_SEED_KEY_ENABLE        (0)
 #endif
 
 #if (BOOT_XCP_SEED_KEY_ENABLE < 0) || (BOOT_XCP_SEED_KEY_ENABLE > 1)
@@ -561,7 +568,7 @@
 #endif
 
 #ifndef BOOT_XCP_UPLOAD_ENABLE
-#define BOOT_XCP_UPLOAD_ENABLE (1)
+#define BOOT_XCP_UPLOAD_ENABLE          (1)
 #endif
 
 #if (BOOT_XCP_UPLOAD_ENABLE < 0) || (BOOT_XCP_UPLOAD_ENABLE > 1)
@@ -569,7 +576,7 @@
 #endif
 
 #ifndef BOOT_XCP_PACKET_RECEIVED_HOOK
-#define BOOT_XCP_PACKET_RECEIVED_HOOK (0)
+#define BOOT_XCP_PACKET_RECEIVED_HOOK   (0)
 #endif
 
 #if (BOOT_XCP_PACKET_RECEIVED_HOOK < 0) || (BOOT_XCP_PACKET_RECEIVED_HOOK > 1)
@@ -577,7 +584,7 @@
 #endif
 
 #ifndef BOOT_XCP_SEED_MAX_LEN
-#define BOOT_XCP_SEED_MAX_LEN (64)
+#define BOOT_XCP_SEED_MAX_LEN           (64)
 #endif
 
 #if (BOOT_XCP_SEED_MAX_LEN <= 0)
@@ -585,7 +592,7 @@
 #endif
 
 #ifndef BOOT_XCP_KEY_MAX_LEN
-#define BOOT_XCP_KEY_MAX_LEN (64)
+#define BOOT_XCP_KEY_MAX_LEN            (64)
 #endif
 
 #if (BOOT_XCP_KEY_MAX_LEN <= 0)
