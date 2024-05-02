@@ -83,15 +83,14 @@ uint16_t ltc1865_spi_rcv(void) {
     return cell_value;
 }
 
-
 #if ACQUISINATORE_FILTER_TYPE == ACQUISINATORE_SIMPLE_MOVING_AVG
 
-uint16_t moving_avg(uint16_t* A, size_t L) {
+uint16_t moving_avg(uint16_t *A, size_t L) {
     double tot = 0.0;
     for (size_t i = 0; i < L; i++) {
         tot += (double)A[i] / L;
     }
-    return (uint16_t) tot;
+    return (uint16_t)tot;
 }
 
 #endif

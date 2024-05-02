@@ -183,13 +183,11 @@ int main(void) {
 
 #if ACQUISINATORE_FILTER_TYPE == ACQUISINATORE_NO_FILTER
 #elif ACQUISINATORE_FILTER_TYPE == ACQUISINATORE_SIMPLE_MOVING_AVG
-    
+
 #elif ACQUISINATORE_FILTER_TYPE == ACQUISINATORE_GAUSSIAN_FILTER
     lpfilter_init();
 #elif ACQUISINATORE_FILTER_TYPE == ACQUISINATORE_OLD_MOVING_AVG
 #endif
-
-    
 
     acquisinatore_set_led_code(acquisinatore_led_code_all_ok);
     uint32_t prevtime_cooling = HAL_GetTick();
