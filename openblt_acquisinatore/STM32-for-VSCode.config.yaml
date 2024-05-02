@@ -89,6 +89,7 @@ sourceFiles:
   - Src/**
   - Core/Src/**
   - Core/Lib/**
+  - Drivers/STM32F3xx_HAL_Driver/Src/stm32f3xx_ll_rcc.c
 
 
 # When no makefile is present it will show a warning pop-up.

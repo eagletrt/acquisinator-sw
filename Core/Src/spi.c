@@ -24,7 +24,7 @@
 
 #include "acquisinatore.h"
 
-#define MOVING_AVG_WINDOW 10
+#define MOVING_AVG_WINDOW (50)
 
 uint16_t ltc1865_raw_values[LTC1865_N_CHANNELS];
 uint16_t ltc1865_raw_filtered_values[LTC1865_N_CHANNELS];
@@ -83,6 +83,19 @@ uint16_t ltc1865_spi_rcv(void) {
     return cell_value;
 }
 
+
+#if ACQUISINATORE_FILTER_TYPE == ACQUISINATORE_SIMPLE_MOVING_AVG
+
+uint16_t moving_avg(uint16_t* A, size_t L) {
+    double tot = 0.0;
+    for (size_t i = 0; i < L; i++) {
+        tot += (double)A[i] / L;
+    }
+    return (uint16_t) tot;
+}
+
+#endif
+
 float ltc1865_read(ltc1865_channel_t channel) {
     if (ltc1865_select_channel(channel) == 0) {
         return -1;
@@ -91,17 +104,29 @@ float ltc1865_read(ltc1865_channel_t channel) {
     if (cval == -1) {
         return -1;
     }
-    ltc1865_raw_values[channel]          = (cval << 8) | (cval >> 8);
-    ltc1865_raw_filtered_values[channel] =  // ltc1865_raw_values[channel];
-        apply_moving_avg(
-            ltc1865_raw_values[channel],
-            &acquisinatore_current_mean[channel],
-            acquisinatore_history[channel],
-            MOVING_AVG_WINDOW,
-            &acquisinatore_hsum[channel],
-            &acquisinatore_history_len[channel],
-            &acquisinatore_completed_loop[channel]);
-    ltc1865_values_in_V[channel] = (ACQUISINATORE_VREF_INT * ((float)ltc1865_raw_values[channel])) / 65536.0f;
+    ltc1865_raw_values[channel] = (cval << 8) | (cval >> 8);
+    uint16_t current_raw_value  = ltc1865_raw_values[channel];
+
+#if ACQUISINATORE_FILTER_TYPE == ACQUISINATORE_NO_FILTER
+    uint16_t current_filtered_value = ltc1865_raw_values[channel];
+#elif ACQUISINATORE_FILTER_TYPE == ACQUISINATORE_SIMPLE_MOVING_AVG
+    acquisinatore_mov_avg_window[acquisinatore_mov_avg_window_idx] = (double)current_raw_value;
+    acquisinatore_mov_avg_window_idx = (acquisinatore_mov_avg_window_idx + 1) % ACQUISINATORE_SIMPLE_MOVING_AVG_KERNEL_SIZE;
+    uint16_t current_filtered_value  = moving_avg(acquisinatore_mov_avg_window, ACQUISINATORE_SIMPLE_MOVING_AVG_KERNEL_SIZE);
+#elif ACQUISINATORE_FILTER_TYPE == ACQUISINATORE_GAUSSIAN_FILTER
+#error Gaussian filter not implemented
+    // vabom[i] = vabom2[i] = (double)random_noise;
+    // if (i > ACQUISINATORE_GAUSSIAN_KERNEL_SIZE) {
+    // vabom2[i - (ACQUISINATORE_GAUSSIAN_KERNEL_SIZE / 2)] =
+    // lpf_gaussian_apply_iir(vabom2 + i - ACQUISINATORE_GAUSSIAN_KERNEL_SIZE, kernel, ACQUISINATORE_GAUSSIAN_KERNEL_SIZE);
+    // fprintf(out, "%f,%f\n", vabom[i - (ACQUISINATORE_GAUSSIAN_KERNEL_SIZE / 2)], vabom2[i - (ACQUISINATORE_GAUSSIAN_KERNEL_SIZE / 2)]);
+    // }
+#elif ACQUISINATORE_FILTER_TYPE == ACQUISINATORE_OLD_MOVING_AVG
+#error Old moving avg is deprecated, please use ACQUISINATORE_SIMPLE_MOVING_AVG
+#endif
+
+    ltc1865_raw_filtered_values[channel] = current_filtered_value;
+    ltc1865_values_in_V[channel]         = (ACQUISINATORE_VREF_INT * ((float)ltc1865_raw_values[channel])) / 65536.0f;
     return ltc1865_values_in_V[channel];
 }
 

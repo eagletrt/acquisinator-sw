@@ -79,7 +79,6 @@ extern "C" {
 /** @defgroup RCC_LL_Exported_Types RCC Exported Types
   * @{
   */
-
 /** @defgroup LL_ES_CLOCK_FREQ Clocks Frequency Structure
   * @{
   */

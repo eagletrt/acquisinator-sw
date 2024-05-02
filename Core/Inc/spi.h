@@ -44,8 +44,6 @@ void MX_SPI1_Init(void);
 
 /* USER CODE BEGIN Prototypes */
 
-typedef enum { ltc1865_DIFF, ltc1865_DIFF_INVERTED, ltc1865_SE_CH1, ltc1865_SE_CH2, LTC1865_N_CHANNELS } ltc1865_channel_t;
-
 float ltc1865_read(ltc1865_channel_t channel);
 
 /* USER CODE END Prototypes */

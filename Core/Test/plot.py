@@ -7,8 +7,8 @@ y2 = []
 with open('filtered.csv','r') as csvfile: 
 	lines = csv.reader(csvfile, delimiter=',') 
 	for row in lines: 
-		y1.append(int(row[0])) 
-		y2.append(int(row[1])) 
+		y1.append(float(row[0])) 
+		y2.append(float(row[1])) 
 
 xs = numpy.linspace(1, len(y1), len(y1))
 print(xs)

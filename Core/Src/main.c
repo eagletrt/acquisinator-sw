@@ -181,8 +181,17 @@ int main(void) {
     MX_TIM2_Init();
     /* USER CODE BEGIN 2 */
 
+#if ACQUISINATORE_FILTER_TYPE == ACQUISINATORE_NO_FILTER
+#elif ACQUISINATORE_FILTER_TYPE == ACQUISINATORE_SIMPLE_MOVING_AVG
+    
+#elif ACQUISINATORE_FILTER_TYPE == ACQUISINATORE_GAUSSIAN_FILTER
+    lpfilter_init();
+#elif ACQUISINATORE_FILTER_TYPE == ACQUISINATORE_OLD_MOVING_AVG
+#endif
+
+    
+
     acquisinatore_set_led_code(acquisinatore_led_code_all_ok);
-    uint32_t prevtime_rods    = HAL_GetTick();
     uint32_t prevtime_cooling = HAL_GetTick();
 #if ACQUISINATOR_ID == 1
     float rod_elongation_offset = load_rod_elongation_offset_from_flash();
@@ -207,62 +216,59 @@ int main(void) {
 
 #if ACQUISINATOR_ID == 1
         float top_left_ntc_temperature = acquisinatore_ntc_from_V_to_degrees_celsius(
-                    ltc1865_channel1_value_in_V / 2.0f, ntc_offset),  // air temperature of radiator entrance
+            ltc1865_channel1_value_in_V / 2.0f, ntc_offset);  // air temperature of radiator entrance
+        float rod_elongation = acquisinatore_rod_elongation_from_V_to_elongation(ltc1865_channel2_value_in_V, rod_elongation_offset);
 #elif ACQUISINATOR_ID == 2
-        float top_right_ntc_temperature = temp_top acquisinatore_ntc_from_V_to_degrees_celsius(
-                    ltc1865_channel1_value_in_V / 2.0f,
-                    ntc_top_right_offset);  // exit from the radiators (but please check every time)
+        float top_right_ntc_temperature = acquisinatore_ntc_from_V_to_degrees_celsius(
+            ltc1865_channel1_value_in_V / 2.0f,
+            ntc_top_right_offset);  // exit from the radiators (but please check every time)
         float bottom_right_ntc_temperature = acquisinatore_ntc_from_V_to_degrees_celsius(
-                    (ltc1865_channel2_value_in_V - 0.8f) / 2.0f,
-                    ntc_bottom_right_offset);  // entrance of the radiators (but please check every time)
+            (ltc1865_channel2_value_in_V - 0.8f) / 2.0f,
+            ntc_bottom_right_offset);  // entrance of the radiators (but please check every time)
 #endif
 
 #if ACQUISINATOR_ID == 1
         if (calibration_cooling_temp_flag) {
             uint8_t n_iterations = 100;
-            float cval = acquisinatore_ntc_from_V_to_degrees_celsius(ltc1865_channel1_value_in_V, ntc_offset);
-            while (n_iterations > 0 && ) {
-
+            while (n_iterations > 0 && top_left_ntc_temperature > TOP_LEFT_NTC_TEMPERATURE_CALIBRATION_THRESHOLD) {
+                // TODO implement binary search
+                n_iterations--;
             }
             save_ntc_offset_to_flash(ntc_offset);
         }
         if (calibration_reset_link_deformation_flag) {
             uint8_t n_iterations = 100;
-            float cval = acquisinatore_rod_elongation_from_V_to_elongation(ltc1865_channel2_value_in_V, rod_elongation_offset);
-            while (n_iterations > 0 && ) {
-
+            while (n_iterations > 0 && rod_elongation > ROD_ELONGATION_CALIBRATION_THRESHOLD) {
+                // TODO implement binary search
+                n_iterations--;
             }
             save_rod_elongation_offset_to_flash(rod_elongation_offset);
         }
 #elif ACQUISINATOR_ID == 2
         if (calibration_cooling_temp_flag) {
             uint8_t n_iterations = 100;
-            while () {
+            while (n_iterations > 0 && top_right_ntc_temperature > TOP_RIGHT_NTC_TEMPERATURE_CALIBRATION_THRESHOLD) {
+                n_iterations--;
             }
-            save_ntc_offset_to_flash(ntc_offset);
+            n_iterations = 100;
+            while (n_iterations > 0 && bottom_right_ntc_temperature > BOTTOM_RIGHT_NTC_TEMPERATURE_CALIBRATION_THRESHOLD) {
+                n_iterations--;
+            }
+            save_ntc_top_right_offset_to_flash(ntc_top_right_offset);
+            save_ntc_bottom_right_offset_to_flash(ntc_bottom_right_offset);
         }
 #endif
 
+        uint32_t currtime = HAL_GetTick();
 #if ACQUISINATOR_ID == 1
-        uint32_t currtime = HAL_GetTick();
-        if ((currtime - prevtime_rods) > NTC_COOLING_DELAY_MS) {
-            prevtime_rods = currtime;
-            acquisinatore_send_cooling_temp(
-                top_left_ntc_temperature,
-                0.0f,
-                0.0f,
-                0.0f);
-        }
-        acquisinatore_send_strain_gauge_val(
-            acquisinatore_rod_elongation_from_V_to_elongation(ltc1865_channel2_value_in_V, rod_elongation_offset));
-#elif ACQUISINATOR_ID == 2
-        uint32_t currtime = HAL_GetTick();
         if ((currtime - prevtime_cooling) > NTC_COOLING_DELAY_MS) {
-            acquisinatore_send_cooling_temp(
-                0.0f,
-                top_right_ntc_temperature,
-                bottom_right_ntc_temperature,
-                0.0f);
+            prevtime_cooling = currtime;
+            acquisinatore_send_cooling_temp(top_left_ntc_temperature, 0.0f, 0.0f, 0.0f);
+        }
+        acquisinatore_send_strain_gauge_val(rod_elongation);
+#elif ACQUISINATOR_ID == 2
+        if ((currtime - prevtime_cooling) > NTC_COOLING_DELAY_MS) {
+            acquisinatore_send_cooling_temp(0.0f, top_right_ntc_temperature, bottom_right_ntc_temperature, 0.0f);
             prevtime_cooling = currtime;
         }
 #endif
