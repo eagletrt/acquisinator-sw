@@ -73,8 +73,7 @@ bool calibration_cooling_temp_flag           = false;
 float calibration_cooling_temp_target        = 0.0f;
 bool calibration_reset_link_deformation_flag = false;
 
-#if ACQUISINATOR_ID == 1
-
+#if ACQUISINATOR_ID == ACQUISINATOR_ID_0
 float load_rod_elongation_offset_from_flash(void) {
     return 0.0f;
 }
@@ -90,9 +89,7 @@ HAL_StatusTypeDef save_rod_elongation_offset_to_flash(float val) {
 HAL_StatusTypeDef save_ntc_offset_to_flash(float val) {
     return HAL_OK;
 }
-
-#elif ACQUISINATOR_ID == 2
-
+#elif ACQUISINATOR_ID == ACQUISINATOR_ID_1
 float load_ntc_top_right_offset_from_flash(void) {
     return 0.0f;
 }
@@ -108,7 +105,6 @@ HAL_StatusTypeDef save_ntc_top_right_offset_to_flash(float val) {
 HAL_StatusTypeDef save_ntc_bottom_right_offset_to_flash(float val) {
     return HAL_OK;
 }
-
 #endif
 
 float acquisinatore_ntc_from_V_to_degrees_celsius(float value_in_V, float offset) {
@@ -130,9 +126,14 @@ float acquisinatore_rod_elongation_from_V_to_elongation(float value_in_V, float 
         (STRAIN_GAUGE_RNOM * STRAIN_GAUGE_K));
 }
 
-void acquisinatore_send_cooling_temp(long double top_left, long double top_right, long double bottom_right, long double bottom_left);
-void acquisinatore_send_strain_gauge_val(float strain_gauge_val);
+// void acquisinatore_send_strain_gauge_val(float strain_gauge_val);
+void acquisinatore_send_strain_gauge_val_fl_wheel(float strain_gauge_val);
+void acquisinatore_send_strain_gauge_val_fr_wheel(float strain_gauge_val);
+void acquisinatore_send_strain_gauge_val_rl_wheel(float strain_gauge_val);
+void acquisinatore_send_strain_gauge_val_rr_wheel(float strain_gauge_val);
 void acquisinatore_send_raw_voltage_values(float channel1, float channel2);
+void acquisinatore_send_water_cooling_temp(double radiator_input, double radiator_output);
+void acquisinatore_send_air_cooling_temp(double air_temperature);
 
 void acquisinatore_turn_led(int on) {
     if (on) {
@@ -145,6 +146,91 @@ void acquisinatore_turn_led(int on) {
 uint32_t get_timestamp_ms(void) {
     return HAL_GetTick();
 }
+
+#if ACQUISINATOR_ID == ACQUISINATOR_ID_0
+void acquisinator_task(
+    float ltc1865_channel1_value_in_V,
+    float ltc1865_channel2_value_in_V,
+    uint32_t *prevtime_cooling,
+    float rod_elongation_offset,
+    float ntc_offset) {
+    float top_left_ntc_temperature = acquisinatore_ntc_from_V_to_degrees_celsius(
+        ltc1865_channel1_value_in_V / 2.0f, ntc_offset);  // air temperature of radiator entrance
+    float rod_elongation = acquisinatore_rod_elongation_from_V_to_elongation(ltc1865_channel2_value_in_V, rod_elongation_offset);
+
+    if (calibration_cooling_temp_flag) {
+        uint8_t n_iterations = 100;
+        while (n_iterations > 0 && top_left_ntc_temperature > TOP_LEFT_NTC_TEMPERATURE_CALIBRATION_THRESHOLD) {
+            // TODO implement calibration
+            n_iterations--;
+        }
+        save_ntc_offset_to_flash(ntc_offset);
+    }
+    if (calibration_reset_link_deformation_flag) {
+        uint8_t n_iterations = 100;
+        while (n_iterations > 0 && rod_elongation > ROD_ELONGATION_CALIBRATION_THRESHOLD) {
+            // TODO implement calibration
+            n_iterations--;
+        }
+        save_rod_elongation_offset_to_flash(rod_elongation_offset);
+    }
+    uint32_t currtime = HAL_GetTick();
+    if ((currtime - *prevtime_cooling) > NTC_COOLING_DELAY_MS) {
+        *prevtime_cooling = currtime;
+        acquisinatore_send_air_cooling_temp(top_left_ntc_temperature);
+    }
+    acquisinatore_send_strain_gauge_val(rod_elongation);
+}
+
+#elif ACQUISINATOR_ID == ACQUISINATOR_ID_1
+
+void acquisinator_task(
+    float ltc1865_channel1_value_in_V,
+    float ltc1865_channel2_value_in_V,
+    uint32_t *prevtime_cooling,
+    float ntc_top_right_offset,
+    float ntc_bottom_right_offset) {
+    float top_right_ntc_temperature = acquisinatore_ntc_from_V_to_degrees_celsius(
+        ltc1865_channel1_value_in_V / 2.0f,
+        ntc_top_right_offset);  // exit from the radiators (but please check every time)
+    float bottom_right_ntc_temperature = acquisinatore_ntc_from_V_to_degrees_celsius(
+        (ltc1865_channel2_value_in_V - 0.8f) / 2.0f,
+        ntc_bottom_right_offset);  // entrance of the radiators (but please check every time)
+    if (calibration_cooling_temp_flag) {
+        uint8_t n_iterations = 100;
+        while (n_iterations > 0 && top_right_ntc_temperature > TOP_RIGHT_NTC_TEMPERATURE_CALIBRATION_THRESHOLD) {
+            n_iterations--;
+        }
+        n_iterations = 100;
+        while (n_iterations > 0 && bottom_right_ntc_temperature > BOTTOM_RIGHT_NTC_TEMPERATURE_CALIBRATION_THRESHOLD) {
+            n_iterations--;
+        }
+        save_ntc_top_right_offset_to_flash(ntc_top_right_offset);
+        save_ntc_bottom_right_offset_to_flash(ntc_bottom_right_offset);
+    }
+    uint32_t currtime = HAL_GetTick();
+    if ((currtime - *prevtime_cooling) > NTC_COOLING_DELAY_MS) {
+        acquisinatore_send_water_cooling_temp(bottom_right_ntc_temperature, top_right_ntc_temperature);
+        *prevtime_cooling = currtime;
+    }
+}
+
+#elif ACQUISINATOR_ID == ACQUISINATOR_ID_2
+void acquisinator_task(float ltc1865_channel2_value_in_V, float rod_elongation_offset) {
+    float rod_elongation = acquisinatore_rod_elongation_from_V_to_elongation(ltc1865_channel2_value_in_V, rod_elongation_offset);
+    acquisinatore_send_strain_gauge_val_fl_wheel(rod_elongation);
+}
+#elif ACQUISINATOR_ID == ACQUISINATOR_ID_3
+void acquisinator_task(float ltc1865_channel2_value_in_V, float rod_elongation_offset) {
+    float rod_elongation = acquisinatore_rod_elongation_from_V_to_elongation(ltc1865_channel2_value_in_V, rod_elongation_offset);
+    acquisinatore_send_strain_gauge_val_fr_wheel(rod_elongation);
+}
+#elif ACQUISINATOR_ID == ACQUISINATOR_ID_4
+void acquisinator_task(float ltc1865_channel2_value_in_V, float rod_elongation_offset) {
+    float rod_elongation = acquisinatore_rod_elongation_from_V_to_elongation(ltc1865_channel2_value_in_V, rod_elongation_offset);
+    acquisinatore_send_strain_gauge_val_rl_wheel(rod_elongation);
+}
+#endif
 
 /* USER CODE END 0 */
 
@@ -191,10 +277,10 @@ int main(void) {
 
     acquisinatore_set_led_code(acquisinatore_led_code_all_ok);
     uint32_t prevtime_cooling = HAL_GetTick();
-#if ACQUISINATOR_ID == 1
+#if ACQUISINATOR_ID == ACQUISINATOR_ID_0
     float rod_elongation_offset = load_rod_elongation_offset_from_flash();
     float ntc_offset            = load_ntc_offset_from_flash();
-#elif ACQUISINATOR_ID == 2
+#elif ACQUISINATOR_ID == ACQUISINATOR_ID_1
     float ntc_top_right_offset    = load_ntc_top_right_offset_from_flash();
     float ntc_bottom_right_offset = load_ntc_bottom_right_offset_from_flash();
 #endif
@@ -204,74 +290,21 @@ int main(void) {
     /* Infinite loop */
     /* USER CODE BEGIN WHILE */
     while (1) {
-        float ltc1865_channel1_value_in_V =
-            ltc1865_read(ltc1865_SE_CH1);  // TODO: specify which filter to use  // normally for the ntc temperature sensor
-        float ltc1865_channel2_value_in_V =
-            ltc1865_read(ltc1865_SE_CH2);  // TODO: specify which filter to use  // normally for the strain gauge
+        float ltc1865_channel1_value_in_V = ltc1865_read(ltc1865_SE_CH1);  // normally for the ntc temperature sensor
+        float ltc1865_channel2_value_in_V = ltc1865_read(ltc1865_SE_CH2);  // normally for the strain gauge
         if (ltc1865_channel1_value_in_V == -1 || ltc1865_channel2_value_in_V == -1) {
             acquisinatore_set_led_code(acquisinatore_led_code_spi_error);
         }
 
-#if ACQUISINATOR_ID == 1
-        float top_left_ntc_temperature = acquisinatore_ntc_from_V_to_degrees_celsius(
-            ltc1865_channel1_value_in_V / 2.0f, ntc_offset);  // air temperature of radiator entrance
-        float rod_elongation = acquisinatore_rod_elongation_from_V_to_elongation(ltc1865_channel2_value_in_V, rod_elongation_offset);
-#elif ACQUISINATOR_ID == 2
-        float top_right_ntc_temperature = acquisinatore_ntc_from_V_to_degrees_celsius(
-            ltc1865_channel1_value_in_V / 2.0f,
-            ntc_top_right_offset);  // exit from the radiators (but please check every time)
-        float bottom_right_ntc_temperature = acquisinatore_ntc_from_V_to_degrees_celsius(
-            (ltc1865_channel2_value_in_V - 0.8f) / 2.0f,
-            ntc_bottom_right_offset);  // entrance of the radiators (but please check every time)
+#if ACQUISINATOR_ID == ACQUISINATOR_ID_0
+        acquisinator_task(ltc1865_channel1_value_in_V, ltc1865_channel2_value_in_V, &prevtime_cooling, rod_elongation_offset, ntc_offset);
+#elif ACQUISINATOR_ID == ACQUISINATOR_ID_1
+        acquisinator_task(
+            ltc1865_channel1_value_in_V, ltc1865_channel2_value_in_V, &prevtime_cooling, ntc_top_right_offset, ntc_bottom_right_offset);
+#elif ACQUISINATOR_ID == ACQUISINATOR_ID_2 || ACQUISINATOR_ID == ACQUISINATOR_ID_3 || ACQUISINATOR_ID == ACQUISINATOR_ID_4
+        acquisinator_task(ltc1865_channel2_value_in_V, 0.0f);
 #endif
 
-#if ACQUISINATOR_ID == 1
-        if (calibration_cooling_temp_flag) {
-            uint8_t n_iterations = 100;
-            while (n_iterations > 0 && top_left_ntc_temperature > TOP_LEFT_NTC_TEMPERATURE_CALIBRATION_THRESHOLD) {
-                // TODO implement binary search
-                n_iterations--;
-            }
-            save_ntc_offset_to_flash(ntc_offset);
-        }
-        if (calibration_reset_link_deformation_flag) {
-            uint8_t n_iterations = 100;
-            while (n_iterations > 0 && rod_elongation > ROD_ELONGATION_CALIBRATION_THRESHOLD) {
-                // TODO implement binary search
-                n_iterations--;
-            }
-            save_rod_elongation_offset_to_flash(rod_elongation_offset);
-        }
-#elif ACQUISINATOR_ID == 2
-        if (calibration_cooling_temp_flag) {
-            uint8_t n_iterations = 100;
-            while (n_iterations > 0 && top_right_ntc_temperature > TOP_RIGHT_NTC_TEMPERATURE_CALIBRATION_THRESHOLD) {
-                n_iterations--;
-            }
-            n_iterations = 100;
-            while (n_iterations > 0 && bottom_right_ntc_temperature > BOTTOM_RIGHT_NTC_TEMPERATURE_CALIBRATION_THRESHOLD) {
-                n_iterations--;
-            }
-            save_ntc_top_right_offset_to_flash(ntc_top_right_offset);
-            save_ntc_bottom_right_offset_to_flash(ntc_bottom_right_offset);
-        }
-#endif
-
-        uint32_t currtime = HAL_GetTick();
-#if ACQUISINATOR_ID == 1
-        if ((currtime - prevtime_cooling) > NTC_COOLING_DELAY_MS) {
-            prevtime_cooling = currtime;
-            acquisinatore_send_cooling_temp(top_left_ntc_temperature, 0.0f, 0.0f, 0.0f);
-        }
-        acquisinatore_send_strain_gauge_val(rod_elongation);
-#elif ACQUISINATOR_ID == 2
-        if ((currtime - prevtime_cooling) > NTC_COOLING_DELAY_MS) {
-            acquisinatore_send_cooling_temp(0.0f, top_right_ntc_temperature, bottom_right_ntc_temperature, 0.0f);
-            prevtime_cooling = currtime;
-        }
-#endif
-        // acquisinatore_send_raw_voltage_values(ltc1865_channel1_value_in_V, ltc1865_channel2_value_in_V);
-        // HAL_Delay(1);
         acquisinatore_set_led_code(last_set_error);
         acquisinatore_led_code_routine();
         can_routine();

@@ -21,6 +21,7 @@ ldscript: STM32F334K8Ux_FLASH_shifted.ld # linker script
 
 # Compiler definitions. The -D prefix for the compiler will be automatically added.
 cDefinitions: []
+  # - ACQUISINATOR_ID=ACQUISINATOR_ID_2
 cxxDefinitions: []
 asDefinitions: []
 

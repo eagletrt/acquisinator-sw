@@ -95,18 +95,49 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan) {
     ntw##_##msg_name##_conversion_to_raw_struct(&raw, &converted); \
     ntw##_##msg_name##_pack(msg_to_be_sent.data, &raw, msg_to_be_sent.size);
 
-void acquisinatore_send_cooling_temp(long double top_left, long double top_right, long double bottom_right, long double bottom_left) {
-    secondary_cooling_temp_converted_t converted = {
-        .top_left = top_left, .top_right = top_right, .bottom_right = bottom_right, .bottom_left = bottom_left};
-    CANLIB_PACK(cooling_temp, COOLING_TEMP, secondary, SECONDARY);
+void acquisinatore_send_water_cooling_temp(double radiator_input, double radiator_output) {
+    secondary_cooling_temp_pumps_converted_t converted = {.input = radiator_input, .output = radiator_output};
+    CANLIB_PACK(cooling_temp_pumps, COOLING_TEMP_PUMPS, secondary, SECONDARY);
     if (can_mgr_send(acquisinatore_can_id, &msg_to_be_sent) < 0) {
         acquisinatore_set_led_code(acquisinatore_led_code_can_not_working);
     }
 }
 
-void acquisinatore_send_strain_gauge_val(float strain_gauge_val) {
-    secondary_link_deformation_converted_t converted = {.deformation = strain_gauge_val};
-    CANLIB_PACK(link_deformation, LINK_DEFORMATION, secondary, SECONDARY);
+void acquisinatore_send_air_cooling_temp(double air_temperature) {
+    secondary_cooling_temp_radiators_converted_t converted = {.air_temp = air_temperature};
+    CANLIB_PACK(cooling_temp_radiators, COOLING_TEMP_RADIATORS, secondary, SECONDARY);
+    if (can_mgr_send(acquisinatore_can_id, &msg_to_be_sent) < 0) {
+        acquisinatore_set_led_code(acquisinatore_led_code_can_not_working);
+    }
+}
+
+void acquisinatore_send_strain_gauge_val_fl_wheel(float strain_gauge_val) {
+    secondary_link_deformation_fl_wheel_converted_t converted = {.deformation = strain_gauge_val};
+    CANLIB_PACK(link_deformation_fl_wheel, LINK_DEFORMATION_FL_WHEEL, secondary, SECONDARY);
+    if (can_mgr_send(acquisinatore_can_id, &msg_to_be_sent) < 0) {
+        acquisinatore_set_led_code(acquisinatore_led_code_can_not_working);
+    }
+}
+
+void acquisinatore_send_strain_gauge_val_fr_wheel(float strain_gauge_val) {
+    secondary_link_deformation_fr_wheel_converted_t converted = {.deformation = strain_gauge_val};
+    CANLIB_PACK(link_deformation_fr_wheel, LINK_DEFORMATION_FR_WHEEL, secondary, SECONDARY);
+    if (can_mgr_send(acquisinatore_can_id, &msg_to_be_sent) < 0) {
+        acquisinatore_set_led_code(acquisinatore_led_code_can_not_working);
+    }
+}
+
+void acquisinatore_send_strain_gauge_val_rl_wheel(float strain_gauge_val) {
+    secondary_link_deformation_rl_wheel_converted_t converted = {.deformation = strain_gauge_val};
+    CANLIB_PACK(link_deformation_rl_wheel, LINK_DEFORMATION_RL_WHEEL, secondary, SECONDARY);
+    if (can_mgr_send(acquisinatore_can_id, &msg_to_be_sent) < 0) {
+        acquisinatore_set_led_code(acquisinatore_led_code_can_not_working);
+    }
+}
+
+void acquisinatore_send_strain_gauge_val_rr_wheel(float strain_gauge_val) {
+    secondary_link_deformation_rr_wheel_converted_t converted = {.deformation = strain_gauge_val};
+    CANLIB_PACK(link_deformation_rr_wheel, LINK_DEFORMATION_RR_WHEEL, secondary, SECONDARY);
     if (can_mgr_send(acquisinatore_can_id, &msg_to_be_sent) < 0) {
         acquisinatore_set_led_code(acquisinatore_led_code_can_not_working);
     }
