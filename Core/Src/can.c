@@ -41,6 +41,8 @@ int can_mgr_from_id_to_index(int can_id, int msg_id) {
             return ACQUISINATOR_SECONDARY_ACQUISINATOR_JMP_TO_BLT;
         case SECONDARY_LINK_DEFORMATION_SET_CALIBRATION_FRAME_ID:
             return ACQUISINATOR_SECONDARY_LINK_DEFORMATION_SET_CALIBRATION;
+        case SECONDARY_AMMO_POS_SET_CALIBRATION_FRAME_ID:
+            return ACQUISINATOR_SECONDARY_AMMO_POS_SET_CALIBRATION;
         default:
             return -1;
     }
@@ -59,20 +61,10 @@ int secondary_acquisinator_jmp_to_blt_handler(can_mgr_msg_t *msg) {
 }
 
 extern bool calibration_ammo_pos_flag;
-extern float calibration_cooling_temp_target;
-extern bool calibration_cooling_temp_flag;
 extern bool calibration_reset_link_deformation_flag;
 
-// TODO: add this message into the canlib and handle it appropriately
 int secondary_ammo_pos_set_calibration_handler(can_mgr_msg_t *msg) {
     calibration_ammo_pos_flag = true;
-    return 0;
-}
-
-// TODO: add this message into the canlib and handle it appropriately
-int secondary_cooling_temp_set_calibration_handler(can_mgr_msg_t *msg) {
-    // calibration_cooling_temp_target = ; // TODO
-    calibration_cooling_temp_flag = true;
     return 0;
 }
 
@@ -86,14 +78,6 @@ int (*primary_message_handlers[N_MONITORED_MESSAGES])(can_mgr_msg_t *) = CAN_MES
 void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan) {
     can_mgr_it_callback(hcan, CAN_RX_FIFO0, NULL);
 }
-
-#define CANLIB_PACK(msg_name, MSG_NAME, ntw, NTW)                  \
-    can_mgr_msg_t msg_to_be_sent = {0};                            \
-    msg_to_be_sent.id            = NTW##_##MSG_NAME##_FRAME_ID;    \
-    msg_to_be_sent.size          = NTW##_##MSG_NAME##_BYTE_SIZE;   \
-    ntw##_##msg_name##_t raw     = {0};                            \
-    ntw##_##msg_name##_conversion_to_raw_struct(&raw, &converted); \
-    ntw##_##msg_name##_pack(msg_to_be_sent.data, &raw, msg_to_be_sent.size);
 
 void acquisinatore_send_water_cooling_temp(double radiator_input, double radiator_output) {
     secondary_cooling_temp_pumps_converted_t converted = {.input = radiator_input, .output = radiator_output};
@@ -111,32 +95,32 @@ void acquisinatore_send_air_cooling_temp(double air_temperature) {
     }
 }
 
-void acquisinatore_send_strain_gauge_val_fl_wheel(float strain_gauge_val) {
-    secondary_link_deformation_fl_wheel_converted_t converted = {.deformation = strain_gauge_val};
+void acquisinatore_send_strain_gauge_val_fl_wheel(uint8_t rod_id, float strain_gauge_val) {
+    secondary_link_deformation_fl_wheel_converted_t converted = {.rod_id = rod_id, .deformation = strain_gauge_val};
     CANLIB_PACK(link_deformation_fl_wheel, LINK_DEFORMATION_FL_WHEEL, secondary, SECONDARY);
     if (can_mgr_send(acquisinatore_can_id, &msg_to_be_sent) < 0) {
         acquisinatore_set_led_code(acquisinatore_led_code_can_not_working);
     }
 }
 
-void acquisinatore_send_strain_gauge_val_fr_wheel(float strain_gauge_val) {
-    secondary_link_deformation_fr_wheel_converted_t converted = {.deformation = strain_gauge_val};
+void acquisinatore_send_strain_gauge_val_fr_wheel(uint8_t rod_id, float strain_gauge_val) {
+    secondary_link_deformation_fr_wheel_converted_t converted = {.rod_id = rod_id, .deformation = strain_gauge_val};
     CANLIB_PACK(link_deformation_fr_wheel, LINK_DEFORMATION_FR_WHEEL, secondary, SECONDARY);
     if (can_mgr_send(acquisinatore_can_id, &msg_to_be_sent) < 0) {
         acquisinatore_set_led_code(acquisinatore_led_code_can_not_working);
     }
 }
 
-void acquisinatore_send_strain_gauge_val_rl_wheel(float strain_gauge_val) {
-    secondary_link_deformation_rl_wheel_converted_t converted = {.deformation = strain_gauge_val};
+void acquisinatore_send_strain_gauge_val_rl_wheel(uint8_t rod_id, float strain_gauge_val) {
+    secondary_link_deformation_rl_wheel_converted_t converted = {.rod_id = rod_id, .deformation = strain_gauge_val};
     CANLIB_PACK(link_deformation_rl_wheel, LINK_DEFORMATION_RL_WHEEL, secondary, SECONDARY);
     if (can_mgr_send(acquisinatore_can_id, &msg_to_be_sent) < 0) {
         acquisinatore_set_led_code(acquisinatore_led_code_can_not_working);
     }
 }
 
-void acquisinatore_send_strain_gauge_val_rr_wheel(float strain_gauge_val) {
-    secondary_link_deformation_rr_wheel_converted_t converted = {.deformation = strain_gauge_val};
+void acquisinatore_send_strain_gauge_val_rr_wheel(uint8_t rod_id, float strain_gauge_val) {
+    secondary_link_deformation_rr_wheel_converted_t converted = {.rod_id = rod_id, .deformation = strain_gauge_val};
     CANLIB_PACK(link_deformation_rr_wheel, LINK_DEFORMATION_RR_WHEEL, secondary, SECONDARY);
     if (can_mgr_send(acquisinatore_can_id, &msg_to_be_sent) < 0) {
         acquisinatore_set_led_code(acquisinatore_led_code_can_not_working);

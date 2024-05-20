@@ -107,7 +107,7 @@ float ltc1865_read(ltc1865_channel_t channel) {
     uint16_t current_raw_value  = ltc1865_raw_values[channel];
 
 #if ACQUISINATORE_FILTER_TYPE == ACQUISINATORE_NO_FILTER
-    uint16_t current_filtered_value = ltc1865_raw_values[channel];
+    uint16_t current_filtered_value = current_raw_value;
 #elif ACQUISINATORE_FILTER_TYPE == ACQUISINATORE_SIMPLE_MOVING_AVG
     acquisinatore_mov_avg_window[acquisinatore_mov_avg_window_idx] = (double)current_raw_value;
     acquisinatore_mov_avg_window_idx = (acquisinatore_mov_avg_window_idx + 1) % ACQUISINATORE_SIMPLE_MOVING_AVG_KERNEL_SIZE;

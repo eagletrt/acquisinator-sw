@@ -58,12 +58,17 @@ _estack = ORIGIN(RAM) + LENGTH(RAM);    /* end of RAM */
 _Min_Heap_Size = 0x200;      /* required amount of heap  */
 _Min_Stack_Size = 0x400; /* required amount of stack */
 
+
+
 /* Specify the memory areas */
 MEMORY
 {
 RAM (xrw)      : ORIGIN = 0x20000000, LENGTH = 12K
 CCMRAM (xrw)      : ORIGIN = 0x10000000, LENGTH = 4K
-FLASH (rx)      : ORIGIN = 0x8004000, LENGTH = 48K
+/* FLASH (rx)      : ORIGIN = 0x8004000, LENGTH = 48K */
+FLASH (rx)  : ORIGIN = 0x8004000, LENGTH = 28K /* reserved for user program */
+ACQUISINATORE_CONFIGURATIONS (rx) : ORIGIN = 0x800B000, LENGTH = 2K /* reserved for acquisinatore configurations */
+CRASH_DEBUG (rx) : ORIGIN = 0x800B800, LENGTH = 18K /* reserved for crash debug */
 }
 
 /* Define output sections */

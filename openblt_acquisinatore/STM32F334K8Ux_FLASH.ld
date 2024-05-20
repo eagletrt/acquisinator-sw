@@ -63,7 +63,11 @@ MEMORY
 {
 RAM (xrw)      : ORIGIN = 0x20000000, LENGTH = 12K
 CCMRAM (xrw)      : ORIGIN = 0x10000000, LENGTH = 4K
-FLASH (rx)      : ORIGIN = 0x8000000, LENGTH = 16K /* Originali 64K */
+/*FLASH (rx)      : ORIGIN = 0x8000000, LENGTH = 16K Originali 64K */
+FLASH (rx) : ORIGIN = 0x8000000, LENGTH = 16K /* reserved for OpenBLT */
+USER_PROGRAM (rx)  : ORIGIN = 0x8004000, LENGTH = 28K /* reserved for user program */
+ACQUISINATORE_CONFIGURATIONS (rx) : ORIGIN = 0x800B000, LENGTH = 2K /* reserved for acquisinatore configurations */
+CRASH_DEBUG (rx) : ORIGIN = 0x800B800, LENGTH = 18K /* reserved for crash debug */
 }
 
 /* Define output sections */

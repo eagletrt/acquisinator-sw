@@ -12,3 +12,4 @@
 **/.vscode/*
 STM32Make.make
 Makefile
+**/__pycache__/**
