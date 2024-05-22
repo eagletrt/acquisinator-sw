@@ -30,6 +30,8 @@ extern "C" {
 
 /* USER CODE BEGIN Includes */
 
+#include "secondary_network.h"
+
 /* USER CODE END Includes */
 
 extern CAN_HandleTypeDef hcan;
@@ -43,6 +45,15 @@ void MX_CAN_Init(void);
 /* USER CODE BEGIN Prototypes */
 
 int can_routine(void);
+
+void acquisinatore_send_version(void);
+void acquisinatore_send_strain_gauge_val_fl_wheel(uint8_t rod_id, float strain_gauge_val);
+void acquisinatore_send_strain_gauge_val_fr_wheel(uint8_t rod_id, float strain_gauge_val);
+void acquisinatore_send_strain_gauge_val_rl_wheel(uint8_t rod_id, float strain_gauge_val);
+void acquisinatore_send_strain_gauge_val_rr_wheel(uint8_t rod_id, float strain_gauge_val);
+void acquisinatore_send_raw_voltage_values(float channel1, float channel2);
+void acquisinatore_send_water_cooling_temp(double radiator_input, double radiator_output);
+void acquisinatore_send_air_cooling_temp(double air_temperature);
 
 /* USER CODE END Prototypes */
 

@@ -127,14 +127,6 @@ float acquisinatore_link_deformation_from_V_to_elongation(float value_in_V) {
         (STRAIN_GAUGE_RNOM * STRAIN_GAUGE_K));
 }
 
-void acquisinatore_send_strain_gauge_val_fl_wheel(uint8_t rod_id, float strain_gauge_val);
-void acquisinatore_send_strain_gauge_val_fr_wheel(uint8_t rod_id, float strain_gauge_val);
-void acquisinatore_send_strain_gauge_val_rl_wheel(uint8_t rod_id, float strain_gauge_val);
-void acquisinatore_send_strain_gauge_val_rr_wheel(uint8_t rod_id, float strain_gauge_val);
-void acquisinatore_send_raw_voltage_values(float channel1, float channel2);
-void acquisinatore_send_water_cooling_temp(double radiator_input, double radiator_output);
-void acquisinatore_send_air_cooling_temp(double air_temperature);
-
 void acquisinatore_turn_led(int on) {
     if (on) {
         HAL_GPIO_WritePin(USER_LED_GPIO_Port, USER_LED_Pin, GPIO_PIN_SET);
@@ -175,18 +167,18 @@ void acquisinator_task(float ch1, float ch2, float *o1, float *o2, uint32_t *pts
     }
 }
 #elif ACQUISINATOR_ID == ACQUISINATOR_ID_2
-void acquisinator_task(float ltc1865_channel2_value_in_V, float link_deformation_offset) {
-    float link_deformation = acquisinatore_link_deformation_from_V_to_elongation(ltc1865_channel2_value_in_V + link_deformation_offset);
+void acquisinator_task(float ch1, float ch2, float *o1, float *o2, uint32_t *pts) {
+    float link_deformation = acquisinatore_link_deformation_from_V_to_elongation(ch2);
     acquisinatore_send_strain_gauge_val_fl_wheel(0, link_deformation);
 }
 #elif ACQUISINATOR_ID == ACQUISINATOR_ID_3
-void acquisinator_task(float ltc1865_channel2_value_in_V, float link_deformation_offset) {
-    float link_deformation = acquisinatore_link_deformation_from_V_to_elongation(ltc1865_channel2_value_in_V + link_deformation_offset);
+void acquisinator_task(float ch1, float ch2, float *o1, float *o2, uint32_t *pts) {
+    float link_deformation = acquisinatore_link_deformation_from_V_to_elongation(ch2);
     acquisinatore_send_strain_gauge_val_fr_wheel(0, link_deformation);
 }
 #elif ACQUISINATOR_ID == ACQUISINATOR_ID_4
-void acquisinator_task(float ltc1865_channel2_value_in_V, float link_deformation_offset) {
-    float link_deformation = acquisinatore_link_deformation_from_V_to_elongation(ltc1865_channel2_value_in_V + link_deformation_offset);
+void acquisinator_task(float ch1, float ch2, float *o1, float *o2, uint32_t *pts) {
+    float link_deformation = acquisinatore_link_deformation_from_V_to_elongation(ch2);
     acquisinatore_send_strain_gauge_val_rl_wheel(0, link_deformation);
 }
 #endif
@@ -240,11 +232,17 @@ int main(void) {
     offset1 = read_float_from_flash((float *)ACQUISINATOR_CONFIG_RESERVED_ADDRESS);
     offset2 = read_float_from_flash((float *)(ACQUISINATOR_CONFIG_RESERVED_ADDRESS + sizeof(float)));
 
+    uint32_t version_previous_timestamp = HAL_GetTick();
+
     /* USER CODE END 2 */
 
     /* Infinite loop */
     /* USER CODE BEGIN WHILE */
     while (1) {
+        if ((HAL_GetTick() - version_previous_timestamp) < SECONDARY_ACQUISINATOR_VERSION_CYCLE_TIME_MS) {
+            acquisinatore_send_version();
+            version_previous_timestamp = HAL_GetTick();
+        }
         float ltc1865_channel1_value_in_V = ltc1865_read(ltc1865_SE_CH1);  // normally for the ntc temperature sensor
         float ltc1865_channel2_value_in_V = ltc1865_read(ltc1865_SE_CH2);  // normally for the strain gauge
         if (ltc1865_channel1_value_in_V == -1 || ltc1865_channel2_value_in_V == -1) {

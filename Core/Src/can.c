@@ -26,7 +26,6 @@
 #include "acquisinatore.h"
 #include "can_manager.h"
 #include "error_codes.h"
-#include "secondary_network.h"
 
 int acquisinatore_can_id;
 
@@ -130,6 +129,14 @@ void acquisinatore_send_strain_gauge_val_rr_wheel(uint8_t rod_id, float strain_g
 void acquisinatore_send_raw_voltage_values(float channel1, float channel2) {
     secondary_debug_signal_2_converted_t converted = {.field_1 = (channel1 / 10.0f), .field_2 = (channel2 / 10.0f)};
     CANLIB_PACK(debug_signal_2, DEBUG_SIGNAL_2, secondary, SECONDARY);
+    if (can_mgr_send(acquisinatore_can_id, &msg_to_be_sent) < 0) {
+        acquisinatore_set_led_code(acquisinatore_led_code_can_not_working);
+    }
+}
+
+void acquisinatore_send_version(void) {
+    secondary_acquisinator_version_converted_t converted = { .acquisinator_id = ACQUISINATOR_ID, .canlib_build_time = CANLIB_BUILD_TIME};
+    CANLIB_PACK(acquisinator_version, ACQUISINATOR_VERSION, secondary, SECONDARY);
     if (can_mgr_send(acquisinatore_can_id, &msg_to_be_sent) < 0) {
         acquisinatore_set_led_code(acquisinatore_led_code_can_not_working);
     }
