@@ -40,7 +40,7 @@ int can_mgr_from_id_to_index(int can_id, int msg_id) {
             return ACQUISINATOR_SECONDARY_ACQUISINATOR_JMP_TO_BLT;
         case SECONDARY_LINK_DEFORMATION_SET_CALIBRATION_FRAME_ID:
             return ACQUISINATOR_SECONDARY_LINK_DEFORMATION_SET_CALIBRATION;
-        case SECONDARY_AMMO_POS_SET_CALIBRATION_FRAME_ID:
+        case SECONDARY_AMMO_COMPRESSION_SET_CALIBRATION_FRAME_ID:
             return ACQUISINATOR_SECONDARY_AMMO_POS_SET_CALIBRATION;
         default:
             return -1;
@@ -80,66 +80,47 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan) {
 
 void acquisinatore_send_water_cooling_temp(double radiator_input, double radiator_output) {
     secondary_cooling_temp_pumps_converted_t converted = {.input = radiator_input, .output = radiator_output};
-    CANLIB_PACK(cooling_temp_pumps, COOLING_TEMP_PUMPS, secondary, SECONDARY);
-    if (can_mgr_send(acquisinatore_can_id, &msg_to_be_sent) < 0) {
-        acquisinatore_set_led_code(acquisinatore_led_code_can_not_working);
-    }
+    CANLIB_PACK_AND_SEND(cooling_temp_pumps, COOLING_TEMP_PUMPS, secondary, SECONDARY);
 }
 
 void acquisinatore_send_air_cooling_temp(double air_temperature) {
     secondary_cooling_temp_radiators_converted_t converted = {.air_temp = air_temperature};
-    CANLIB_PACK(cooling_temp_radiators, COOLING_TEMP_RADIATORS, secondary, SECONDARY);
-    if (can_mgr_send(acquisinatore_can_id, &msg_to_be_sent) < 0) {
-        acquisinatore_set_led_code(acquisinatore_led_code_can_not_working);
-    }
+    CANLIB_PACK_AND_SEND(cooling_temp_radiators, COOLING_TEMP_RADIATORS, secondary, SECONDARY);
 }
 
 void acquisinatore_send_strain_gauge_val_fl_wheel(uint8_t rod_id, float strain_gauge_val) {
     secondary_link_deformation_fl_wheel_converted_t converted = {.rod_id = rod_id, .deformation = strain_gauge_val};
-    CANLIB_PACK(link_deformation_fl_wheel, LINK_DEFORMATION_FL_WHEEL, secondary, SECONDARY);
-    if (can_mgr_send(acquisinatore_can_id, &msg_to_be_sent) < 0) {
-        acquisinatore_set_led_code(acquisinatore_led_code_can_not_working);
-    }
+    CANLIB_PACK_AND_SEND(link_deformation_fl_wheel, LINK_DEFORMATION_FL_WHEEL, secondary, SECONDARY);
 }
 
 void acquisinatore_send_strain_gauge_val_fr_wheel(uint8_t rod_id, float strain_gauge_val) {
     secondary_link_deformation_fr_wheel_converted_t converted = {.rod_id = rod_id, .deformation = strain_gauge_val};
-    CANLIB_PACK(link_deformation_fr_wheel, LINK_DEFORMATION_FR_WHEEL, secondary, SECONDARY);
-    if (can_mgr_send(acquisinatore_can_id, &msg_to_be_sent) < 0) {
-        acquisinatore_set_led_code(acquisinatore_led_code_can_not_working);
-    }
+    CANLIB_PACK_AND_SEND(link_deformation_fr_wheel, LINK_DEFORMATION_FR_WHEEL, secondary, SECONDARY);
 }
 
 void acquisinatore_send_strain_gauge_val_rl_wheel(uint8_t rod_id, float strain_gauge_val) {
     secondary_link_deformation_rl_wheel_converted_t converted = {.rod_id = rod_id, .deformation = strain_gauge_val};
-    CANLIB_PACK(link_deformation_rl_wheel, LINK_DEFORMATION_RL_WHEEL, secondary, SECONDARY);
-    if (can_mgr_send(acquisinatore_can_id, &msg_to_be_sent) < 0) {
-        acquisinatore_set_led_code(acquisinatore_led_code_can_not_working);
-    }
+    CANLIB_PACK_AND_SEND(link_deformation_rl_wheel, LINK_DEFORMATION_RL_WHEEL, secondary, SECONDARY);
 }
 
 void acquisinatore_send_strain_gauge_val_rr_wheel(uint8_t rod_id, float strain_gauge_val) {
     secondary_link_deformation_rr_wheel_converted_t converted = {.rod_id = rod_id, .deformation = strain_gauge_val};
-    CANLIB_PACK(link_deformation_rr_wheel, LINK_DEFORMATION_RR_WHEEL, secondary, SECONDARY);
-    if (can_mgr_send(acquisinatore_can_id, &msg_to_be_sent) < 0) {
-        acquisinatore_set_led_code(acquisinatore_led_code_can_not_working);
-    }
+    CANLIB_PACK_AND_SEND(link_deformation_rr_wheel, LINK_DEFORMATION_RR_WHEEL, secondary, SECONDARY);
 }
 
-void acquisinatore_send_raw_voltage_values(float channel1, float channel2) {
-    secondary_debug_signal_2_converted_t converted = {.field_1 = (channel1 / 10.0f), .field_2 = (channel2 / 10.0f)};
-    CANLIB_PACK(debug_signal_2, DEBUG_SIGNAL_2, secondary, SECONDARY);
-    if (can_mgr_send(acquisinatore_can_id, &msg_to_be_sent) < 0) {
-        acquisinatore_set_led_code(acquisinatore_led_code_can_not_working);
-    }
+void acquisinatore_send_debug_1_values(float v1, float v2, float v3, float v4) {
+    secondary_debug_signal_1_converted_t converted = {.field_1 = v1, .field_2 = v2, .field_3 = v3, .field_4 = v4};
+    CANLIB_PACK_AND_SEND(debug_signal_1, DEBUG_SIGNAL_1, secondary, SECONDARY);
+}
+
+void acquisinatore_send_debug_2_values(float v1, float v2, float v3, float v4) {
+    secondary_debug_signal_2_converted_t converted = {.field_1 = v1, .field_2 = v2, .field_3 = v3, .field_4 = v4};
+    CANLIB_PACK_AND_SEND(debug_signal_2, DEBUG_SIGNAL_2, secondary, SECONDARY);
 }
 
 void acquisinatore_send_version(void) {
-    secondary_acquisinator_version_converted_t converted = { .acquisinator_id = ACQUISINATOR_ID, .canlib_build_time = CANLIB_BUILD_TIME};
-    CANLIB_PACK(acquisinator_version, ACQUISINATOR_VERSION, secondary, SECONDARY);
-    if (can_mgr_send(acquisinatore_can_id, &msg_to_be_sent) < 0) {
-        acquisinatore_set_led_code(acquisinatore_led_code_can_not_working);
-    }
+    secondary_acquisinator_version_converted_t converted = {.acquisinator_id = ACQUISINATOR_ID, .canlib_build_time = CANLIB_BUILD_TIME};
+    CANLIB_PACK_AND_SEND(acquisinator_version, ACQUISINATOR_VERSION, secondary, SECONDARY);
 }
 
 int can_routine(void) {

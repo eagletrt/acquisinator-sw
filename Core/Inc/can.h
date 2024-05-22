@@ -47,11 +47,13 @@ void MX_CAN_Init(void);
 int can_routine(void);
 
 void acquisinatore_send_version(void);
+void acquisinatore_send_debug_1_values(float v1, float v2, float v3, float v4);
+void acquisinatore_send_debug_2_values(float v1, float v2, float v3, float v4);
+
 void acquisinatore_send_strain_gauge_val_fl_wheel(uint8_t rod_id, float strain_gauge_val);
 void acquisinatore_send_strain_gauge_val_fr_wheel(uint8_t rod_id, float strain_gauge_val);
 void acquisinatore_send_strain_gauge_val_rl_wheel(uint8_t rod_id, float strain_gauge_val);
 void acquisinatore_send_strain_gauge_val_rr_wheel(uint8_t rod_id, float strain_gauge_val);
-void acquisinatore_send_raw_voltage_values(float channel1, float channel2);
 void acquisinatore_send_water_cooling_temp(double radiator_input, double radiator_output);
 void acquisinatore_send_air_cooling_temp(double air_temperature);
 

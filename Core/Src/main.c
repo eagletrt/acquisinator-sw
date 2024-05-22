@@ -147,7 +147,7 @@ void acquisinator_task(float ch1, float ch2, float *o1, float *o2, uint32_t *pts
 
     if (calibration_reset_link_deformation_flag) {
         *o2 = LINK_DEFORMATION_CALIBRATION_VALUE - link_deformation;  // TODO: use the oversampled one
-        save_configs_to_flash(*o1, *o2);
+        // save_configs_to_flash(*o1, *o2);
     }
     if ((HAL_GetTick() - *pts) > NTC_COOLING_DELAY_MS) {
         *pts = HAL_GetTick();
@@ -229,6 +229,11 @@ int main(void) {
     acquisinatore_set_led_code(acquisinatore_led_code_all_ok);
     uint32_t previous_timestamp = HAL_GetTick();
     float offset1, offset2 = 0.0f;
+
+    // if (save_configs_to_flash(1.0f, 1.0f) < HAL_OK) {
+        // Error_Handler();
+    // }
+
     offset1 = read_float_from_flash((float *)ACQUISINATOR_CONFIG_RESERVED_ADDRESS);
     offset2 = read_float_from_flash((float *)(ACQUISINATOR_CONFIG_RESERVED_ADDRESS + sizeof(float)));
 
@@ -239,7 +244,7 @@ int main(void) {
     /* Infinite loop */
     /* USER CODE BEGIN WHILE */
     while (1) {
-        if ((HAL_GetTick() - version_previous_timestamp) < SECONDARY_ACQUISINATOR_VERSION_CYCLE_TIME_MS) {
+        if ((HAL_GetTick() - version_previous_timestamp) > SECONDARY_ACQUISINATOR_VERSION_CYCLE_TIME_MS) {
             acquisinatore_send_version();
             version_previous_timestamp = HAL_GetTick();
         }
@@ -248,6 +253,7 @@ int main(void) {
         if (ltc1865_channel1_value_in_V == -1 || ltc1865_channel2_value_in_V == -1) {
             acquisinatore_set_led_code(acquisinatore_led_code_spi_error);
         }
+        // acquisinatore_send_debug_1_values(offset1, offset2, 0.0f, 0.0f);
         acquisinator_task(ltc1865_channel1_value_in_V, ltc1865_channel2_value_in_V, &offset1, &offset2, &previous_timestamp);
         acquisinatore_set_led_code(last_set_error);
         acquisinatore_led_code_routine();

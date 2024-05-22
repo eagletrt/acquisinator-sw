@@ -1,7 +1,7 @@
-# CODEX ACQVISINATORI
+# El ciàpa su
 
-Componente logico permanente disposto per l'Acquisinatore 1865.
+Componente logico permanente disposto per l'Acquisinatore 1865, per gli amici "el ciàpa su".
 
-Contributori:
+El scrivàn:
 - [Giacomo Mazzucchi](https://github.com/gmazzucchi)
 

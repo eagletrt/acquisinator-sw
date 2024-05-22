@@ -36,7 +36,7 @@
 #define ACQUISINATOR_ID_30 (30U)
 #define ACQUISINATOR_ID_31 (31U)
 
-#define ACQUISINATOR_ID (ACQUISINATOR_ID_3)
+#define ACQUISINATOR_ID (ACQUISINATOR_ID_2)
 
 /****
  * Memory mapping:
@@ -86,7 +86,7 @@ typedef enum { ltc1865_DIFF, ltc1865_DIFF_INVERTED, ltc1865_SE_CH1, ltc1865_SE_C
 #define ACQUISINATORE_SIMPLE_MOVING_AVG (1U)
 #define ACQUISINATORE_GAUSSIAN_FILTER   (2U)
 #define ACQUISINATORE_OLD_MOVING_AVG    (3U)
-#define ACQUISINATORE_FILTER_TYPE       ACQUISINATORE_NO_FILTER
+#define ACQUISINATORE_FILTER_TYPE       ACQUISINATORE_SIMPLE_MOVING_AVG
 
 enum {
     ACQUISINATOR_SECONDARY_ACQUISINATOR_JMP_TO_BLT = 0,
@@ -125,12 +125,15 @@ uint32_t get_timestamp_ms(void);
 #define STRAIN_GAUGE_VS   (3.294f)
 #define STRAIN_GAUGE_K    (2.01f)
 
-#define CANLIB_PACK(msg_name, MSG_NAME, ntw, NTW)                  \
-    can_mgr_msg_t msg_to_be_sent = {0};                            \
-    msg_to_be_sent.id            = NTW##_##MSG_NAME##_FRAME_ID;    \
-    msg_to_be_sent.size          = NTW##_##MSG_NAME##_BYTE_SIZE;   \
-    ntw##_##msg_name##_t raw     = {0};                            \
-    ntw##_##msg_name##_conversion_to_raw_struct(&raw, &converted); \
-    ntw##_##msg_name##_pack(msg_to_be_sent.data, &raw, msg_to_be_sent.size);
+#define CANLIB_PACK_AND_SEND(msg_name, MSG_NAME, ntw, NTW)                   \
+    can_mgr_msg_t msg_to_be_sent = {0};                                      \
+    msg_to_be_sent.id            = NTW##_##MSG_NAME##_FRAME_ID;              \
+    msg_to_be_sent.size          = NTW##_##MSG_NAME##_BYTE_SIZE;             \
+    ntw##_##msg_name##_t raw     = {0};                                      \
+    ntw##_##msg_name##_conversion_to_raw_struct(&raw, &converted);           \
+    ntw##_##msg_name##_pack(msg_to_be_sent.data, &raw, msg_to_be_sent.size); \
+    if (can_mgr_send(acquisinatore_can_id, &msg_to_be_sent) < 0) {           \
+        acquisinatore_set_led_code(acquisinatore_led_code_can_not_working);  \
+    }
 
 #endif
