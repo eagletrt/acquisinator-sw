@@ -20,6 +20,7 @@ void acquisinatore_set_led_code(acquisinatore_led_code_t error_code) {
 }
 
 void acquisinatore_led_code_routine(void) {
+    acquisinatore_set_led_code(last_set_error);
     if (error_countdown > 0) {
         uint32_t current_time = get_timestamp_ms();
         uint32_t waiting_time = LED_TOGGLING_WAITING_TIME;

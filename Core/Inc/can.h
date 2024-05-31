@@ -47,6 +47,7 @@ void MX_CAN_Init(void);
 int can_routine(void);
 
 void acquisinatore_send_version(void);
+void acquisinatore_send_calibration_offsets(float off1, float off2);
 void acquisinatore_send_debug_1_values(float v1, float v2, float v3, float v4);
 void acquisinatore_send_debug_2_values(float v1, float v2, float v3, float v4);
 

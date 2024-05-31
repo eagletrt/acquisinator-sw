@@ -105,6 +105,7 @@ typedef enum {
     acquisinatore_led_code_all_ok,
     acquisinatore_led_code_can_not_working,
     acquisinatore_led_code_spi_error,
+    acquisinatore_led_code_read_write_flash,
     acquisinatore_led_code_n_values
 } acquisinatore_led_code_t;
 

@@ -108,6 +108,11 @@ void acquisinatore_send_strain_gauge_val_rr_wheel(uint8_t rod_id, float strain_g
     CANLIB_PACK_AND_SEND(link_deformation_rr_wheel, LINK_DEFORMATION_RR_WHEEL, secondary, SECONDARY);
 }
 
+void acquisinatore_send_calibration_offsets(float off1, float off2) {
+    secondary_acquisinator_calibrations_offsets_converted_t converted = { .acquisinator_id = ACQUISINATOR_ID, .offset1 = off1, .offset2 = off2 };
+    CANLIB_PACK_AND_SEND(acquisinator_calibrations_offsets, ACQUISINATOR_CALIBRATIONS_OFFSETS, secondary, SECONDARY);
+}
+
 void acquisinatore_send_debug_1_values(float v1, float v2, float v3, float v4) {
     secondary_debug_signal_1_converted_t converted = {.field_1 = v1, .field_2 = v2, .field_3 = v3, .field_4 = v4};
     CANLIB_PACK_AND_SEND(debug_signal_1, DEBUG_SIGNAL_1, secondary, SECONDARY);
