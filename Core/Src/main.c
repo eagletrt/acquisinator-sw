@@ -226,6 +226,22 @@ void acquisinator_task(float ch1, float ch2, float *o1, float *o2, uint32_t *pts
     }
     acquisinatore_send_strain_gauge_val_rl_wheel(0, link_deformation);
 }
+#elif ACQUISINATOR_ID == ACQUISINATOR_ID_5
+void acquisinator_task(float ch1, float ch2, float *o1, float *o2, uint32_t *pts) {}
+#elif ACQUISINATOR_ID == ACQUISINATOR_ID_6
+void acquisinator_task(float ch1, float ch2, float *o1, float *o2, uint32_t *pts) {}
+#elif ACQUISINATOR_ID == ACQUISINATOR_ID_7
+void acquisinator_task(float ch1, float ch2, float *o1, float *o2, uint32_t *pts) {}
+#elif ACQUISINATOR_ID == ACQUISINATOR_ID_8
+void acquisinator_task(float ch1, float ch2, float *o1, float *o2, uint32_t *pts) {}
+#elif ACQUISINATOR_ID == ACQUISINATOR_ID_9
+void acquisinator_task(float ch1, float ch2, float *o1, float *o2, uint32_t *pts) {}
+#elif ACQUISINATOR_ID == ACQUISINATOR_ID_10
+void acquisinator_task(float ch1, float ch2, float *o1, float *o2, uint32_t *pts) {}
+#elif ACQUISINATOR_ID == ACQUISINATOR_ID_11
+void acquisinator_task(float ch1, float ch2, float *o1, float *o2, uint32_t *pts) {}
+#elif ACQUISINATOR_ID == ACQUISINATOR_ID_12
+void acquisinator_task(float ch1, float ch2, float *o1, float *o2, uint32_t *pts) {}
 #endif
 
 /* USER CODE END 0 */

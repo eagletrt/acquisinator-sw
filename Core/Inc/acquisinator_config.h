@@ -36,7 +36,7 @@
 #define ACQUISINATOR_ID_30 (30U)
 #define ACQUISINATOR_ID_31 (31U)
 
-#define ACQUISINATOR_ID (ACQUISINATOR_ID_2)
+#define ACQUISINATOR_ID (ACQUISINATOR_ID_11)
 
 /****
  * Memory mapping:
