@@ -1,4 +1,4 @@
-# El ciàpa su
+# Acquisinator SW
 
 Componente logico permanente disposto per l'Acquisinatore 1865, per gli amici "el ciàpa su".
 
