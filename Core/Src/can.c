@@ -88,28 +88,29 @@ void acquisinatore_send_air_cooling_temp(double air_temperature) {
     CANLIB_PACK_AND_SEND(cooling_temp_radiators, COOLING_TEMP_RADIATORS, secondary, SECONDARY);
 }
 
-void acquisinatore_send_strain_gauge_val_fl_wheel(uint8_t rod_id, float strain_gauge_val) {
+void acquisinatore_send_strain_gauge_val_fl_wheel(secondary_link_deformation_fl_wheel_rod_id rod_id, float strain_gauge_val) {
     secondary_link_deformation_fl_wheel_converted_t converted = {.rod_id = rod_id, .deformation = strain_gauge_val};
     CANLIB_PACK_AND_SEND(link_deformation_fl_wheel, LINK_DEFORMATION_FL_WHEEL, secondary, SECONDARY);
 }
 
-void acquisinatore_send_strain_gauge_val_fr_wheel(uint8_t rod_id, float strain_gauge_val) {
+void acquisinatore_send_strain_gauge_val_fr_wheel(secondary_link_deformation_fr_wheel_rod_id rod_id, float strain_gauge_val) {
     secondary_link_deformation_fr_wheel_converted_t converted = {.rod_id = rod_id, .deformation = strain_gauge_val};
     CANLIB_PACK_AND_SEND(link_deformation_fr_wheel, LINK_DEFORMATION_FR_WHEEL, secondary, SECONDARY);
 }
 
-void acquisinatore_send_strain_gauge_val_rl_wheel(uint8_t rod_id, float strain_gauge_val) {
+void acquisinatore_send_strain_gauge_val_rl_wheel(secondary_link_deformation_rl_wheel_rod_id rod_id, float strain_gauge_val) {
     secondary_link_deformation_rl_wheel_converted_t converted = {.rod_id = rod_id, .deformation = strain_gauge_val};
     CANLIB_PACK_AND_SEND(link_deformation_rl_wheel, LINK_DEFORMATION_RL_WHEEL, secondary, SECONDARY);
 }
 
-void acquisinatore_send_strain_gauge_val_rr_wheel(uint8_t rod_id, float strain_gauge_val) {
+void acquisinatore_send_strain_gauge_val_rr_wheel(secondary_link_deformation_rr_wheel_rod_id rod_id, float strain_gauge_val) {
     secondary_link_deformation_rr_wheel_converted_t converted = {.rod_id = rod_id, .deformation = strain_gauge_val};
     CANLIB_PACK_AND_SEND(link_deformation_rr_wheel, LINK_DEFORMATION_RR_WHEEL, secondary, SECONDARY);
 }
 
 void acquisinatore_send_calibration_offsets(float off1, float off2) {
-    secondary_acquisinator_calibrations_offsets_converted_t converted = { .acquisinator_id = ACQUISINATOR_ID, .offset1 = off1, .offset2 = off2 };
+    secondary_acquisinator_calibrations_offsets_converted_t converted = {
+        .acquisinator_id = ACQUISINATOR_ID, .offset1 = off1, .offset2 = off2};
     CANLIB_PACK_AND_SEND(acquisinator_calibrations_offsets, ACQUISINATOR_CALIBRATIONS_OFFSETS, secondary, SECONDARY);
 }
 
@@ -126,6 +127,11 @@ void acquisinatore_send_debug_2_values(float v1, float v2, float v3, float v4) {
 void acquisinatore_send_version(void) {
     secondary_acquisinator_version_converted_t converted = {.acquisinator_id = ACQUISINATOR_ID, .canlib_build_time = CANLIB_BUILD_TIME};
     CANLIB_PACK_AND_SEND(acquisinator_version, ACQUISINATOR_VERSION, secondary, SECONDARY);
+}
+
+void acquisinatore_send_ammo_pos(float fl, float fr, float rl, float rr) {
+    secondary_ammo_compression_converted_t converted = {.fl = fl, .fr = fr, .rl = rl, .rr = rr};
+    CANLIB_PACK_AND_SEND(ammo_compression, AMMO_COMPRESSION, secondary, SECONDARY);
 }
 
 int can_routine(void) {

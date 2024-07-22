@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 
-#define ACQUISINATOR_ID_0  (0U)  // for strain gauge and air outside the radiators
+// #define ACQUISINATOR_ID_0  (0U)  // for strain gauge and air outside the radiators
 #define ACQUISINATOR_ID_1  (1U)  // for the radiators cooling temperatures, water in and out of the radiators
 #define ACQUISINATOR_ID_2  (2U)  // only strain gauge fl
 #define ACQUISINATOR_ID_3  (3U)  // only strain gauge fr
@@ -36,7 +36,15 @@
 #define ACQUISINATOR_ID_30 (30U)
 #define ACQUISINATOR_ID_31 (31U)
 
-#define ACQUISINATOR_ID (ACQUISINATOR_ID_11)
+#define ACQUISINATOR_ID (ACQUISINATOR_ID_5)
+
+#if ACQUISINATOR_ID == 0
+#error INVALID ACQUISINATOR_ID == 0
+#endif
+
+#if ACQUISINATOR_ID == ACQUISINATOR_ID_0
+#error INVALID ACQUISINATOR_ID == ACQUISINATOR_ID_0
+#endif
 
 /****
  * Memory mapping:
@@ -88,6 +96,8 @@ typedef enum { ltc1865_DIFF, ltc1865_DIFF_INVERTED, ltc1865_SE_CH1, ltc1865_SE_C
 #define ACQUISINATORE_OLD_MOVING_AVG    (3U)
 #define ACQUISINATORE_FILTER_TYPE       ACQUISINATORE_SIMPLE_MOVING_AVG
 
+#define ACQUISINATORE_LINK_DEFORMATION_SAMPLING_RATE (50U)  // Hz
+
 enum {
     ACQUISINATOR_SECONDARY_ACQUISINATOR_JMP_TO_BLT = 0,
     ACQUISINATOR_SECONDARY_LINK_DEFORMATION_SET_CALIBRATION,
@@ -95,8 +105,7 @@ enum {
     N_MONITORED_MESSAGES
 };
 
-#define CAN_MESSAGES_HANDLERS \
-    { secondary_acquisinator_jmp_to_blt_handler, secondary_link_deformation_set_calibration_handler }
+#define CAN_MESSAGES_HANDLERS {secondary_acquisinator_jmp_to_blt_handler, secondary_link_deformation_set_calibration_handler}
 
 #define LINK_DEFORMATION_CALIBRATION_VALUE (1.5010000000001358f)
 
@@ -125,6 +134,19 @@ uint32_t get_timestamp_ms(void);
 #define STRAIN_GAUGE_VREF (1.501f)
 #define STRAIN_GAUGE_VS   (3.294f)
 #define STRAIN_GAUGE_K    (2.01f)
+
+/*
+0 mV - 3260 mV
+Potentiometer length: 123 mm to 173 mm
+*/
+#define MILLIVOLT_PER_MM             (65.2f)
+#define POT_TO_AMMO_POS(s)           ((0.851361811586514f * s) + (0.000533184086178801f * s * s))
+#define FROM_MILLIVOLT_TO_POT_POS(v) (((3260.0f - (float)v)) / MILLIVOLT_PER_MM);
+#define DEF_POT_DX_REST_POS          (18.6f + 1.9f)    // 0.0f // 21.887383f
+#define DEF_POT_SX_REST_POS          (16.882f + 2.5f)  // 0.0f // 21.403099f
+#define AMMO_SX_REST_POS             POT_MMO_POS(POT_SX_REST_POS)
+#define AMMO_DX_REST_POS             POT_TO_AMMO_POS(POT_DX_REST_POS)
+#define MV_TO_POT_POS(v)             ((62.7126571336371f) - (0.0149283343200212f * (v)) - (1.29019872658103e-07f * (v) * (v)))
 
 #define CANLIB_PACK_AND_SEND(msg_name, MSG_NAME, ntw, NTW)                   \
     can_mgr_msg_t msg_to_be_sent = {0};                                      \
