@@ -187,7 +187,7 @@ void acquisinator_task(float ch1, float ch2, float *o1, float *o2, uint32_t *pts
         float pot_pos_sx = MV_TO_POT_POS(ch2) - pot_rest_pos[POT_REST_POS_IDX_SX];
         c_ammo_pos_dx    = POT_TO_AMMO_POS(pot_pos_dx) * -1;
         c_ammo_pos_sx    = POT_TO_AMMO_POS(pot_pos_sx) * -1;
-        acquisinatore_send_debug_1_values(ch1, ch2, 0.0f, 0.0f);
+        acquisinatore_send_debug_1_values(ch1 / 10.0f, ch2 / 10.0f, 0.0f, 0.0f);
         acquisinatore_send_ammo_pos(0.0f, 0.0f, c_ammo_pos_sx, c_ammo_pos_dx);  // controllare che i canali siano giusti
     }
 }
@@ -203,45 +203,17 @@ void acquisinator_task(float ch1, float ch2, float *o1, float *o2, uint32_t *pts
         float pot_pos_sx = MV_TO_POT_POS(ch2) - pot_rest_pos[POT_REST_POS_IDX_SX];
         c_ammo_pos_dx    = POT_TO_AMMO_POS(pot_pos_dx) * -1;
         c_ammo_pos_sx    = POT_TO_AMMO_POS(pot_pos_sx) * -1;
-        acquisinatore_send_debug_2_values(ch1, ch2, 0.0f, 0.0f);
+        acquisinatore_send_debug_2_values(ch1 / 10.0f, ch2 / 10.0f, 0.0f, 0.0f);
         acquisinatore_send_ammo_pos(c_ammo_pos_sx, c_ammo_pos_dx, 0.0f, 0.0f);  // controllare che i canali siano giusti
     }
 }
 
-#elif ACQUISINATOR_ID == ACQUISINATOR_ID_9
-void acquisinator_task(float ch1, float ch2, float *o1, float *o2, uint32_t *pts) {
-    float link_deformation = link_deformation_routine(ch1, ch2, o1, o2, pts);
-    acquisinatore_send_strain_gauge_val_rr_wheel(secondary_link_deformation_rr_wheel_rod_id_F1011, link_deformation);
-}
-#elif ACQUISINATOR_ID == ACQUISINATOR_ID_10
-void acquisinator_task(float ch1, float ch2, float *o1, float *o2, uint32_t *pts) {
-    float link_deformation = link_deformation_routine(ch1, ch2, o1, o2, pts);
-    acquisinatore_send_strain_gauge_val_rr_wheel(secondary_link_deformation_rr_wheel_rod_id_F36, link_deformation);
-}
-#elif ACQUISINATOR_ID == ACQUISINATOR_ID_12
-void acquisinator_task(float ch1, float ch2, float *o1, float *o2, uint32_t *pts) {
-    float link_deformation = link_deformation_routine(ch1, ch2, o1, o2, pts);
-    acquisinatore_send_strain_gauge_val_rr_wheel(secondary_link_deformation_rr_wheel_rod_id_F46, link_deformation);
-}
-#elif ACQUISINATOR_ID == ACQUISINATOR_ID_4
-void acquisinator_task(float ch1, float ch2, float *o1, float *o2, uint32_t *pts) {
-    float link_deformation = link_deformation_routine(ch1, ch2, o1, o2, pts);
-    acquisinatore_send_strain_gauge_val_rr_wheel(secondary_link_deformation_rr_wheel_rod_id_F17, link_deformation);
-}
-#elif ACQUISINATOR_ID == ACQUISINATOR_ID_13
-void acquisinator_task(float ch1, float ch2, float *o1, float *o2, uint32_t *pts) {
-    float link_deformation = link_deformation_routine(ch1, ch2, o1, o2, pts);
-    acquisinatore_send_strain_gauge_val_rr_wheel(secondary_link_deformation_rr_wheel_rod_id_F58, link_deformation);
-}
-#elif ACQUISINATOR_ID == ACQUISINATOR_ID_6
-void acquisinator_task(float ch1, float ch2, float *o1, float *o2, uint32_t *pts) {
-    float link_deformation = link_deformation_routine(ch1, ch2, o1, o2, pts);
-    acquisinatore_send_strain_gauge_val_rr_wheel(secondary_link_deformation_rr_wheel_rod_id_F27, link_deformation);
-}
 #else
+
 void acquisinator_task(float ch1, float ch2, float *o1, float *o2, uint32_t *pts) {
 #warning NO ACQUISINATOR TASKS
 }
+
 #endif
 
 /* USER CODE END 0 */
