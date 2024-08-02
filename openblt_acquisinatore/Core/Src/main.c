@@ -62,6 +62,43 @@ static void MX_CAN_Init(void);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 
+// TODO: include the crash debug stuff so that we can debug strange stuff remotely
+#define CHECK_HAL_RES(res) \
+    if (res != HAL_OK) {   \
+        return res;        \
+    }
+
+HAL_StatusTypeDef save_configs_to_flash(float data1, float data2, uint32_t acquisinatore_version) {
+    HAL_StatusTypeDef res = HAL_FLASH_Unlock();
+    CHECK_HAL_RES(res);
+
+    FLASH_EraseInitTypeDef erase_init = {
+        .TypeErase = FLASH_TYPEERASE_PAGES, .PageAddress = ACQUISINATOR_CONFIG_RESERVED_ADDRESS, .NbPages = 1};
+    uint32_t mem_error = 0;
+    res                = HAL_FLASHEx_Erase(&erase_init, &mem_error);
+    CHECK_HAL_RES(res);
+
+    union {
+        uint32_t d;
+        float f;
+    } flash_config_union = {.f = data1};
+
+    res = HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, ACQUISINATOR_CONFIG_RESERVED_ADDRESS, flash_config_union.d);
+    CHECK_HAL_RES(res);
+
+    flash_config_union.f = data2;
+    res = HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, ACQUISINATOR_CONFIG_RESERVED_ADDRESS + sizeof(data1), flash_config_union.d);
+    CHECK_HAL_RES(res);
+
+    res = HAL_FLASH_Program(
+        FLASH_TYPEPROGRAM_WORD, ACQUISINATOR_CONFIG_RESERVED_ADDRESS + sizeof(data1) + sizeof(data2), acquisinatore_version);
+    CHECK_HAL_RES(res);
+
+    res = HAL_FLASH_Lock();
+    CHECK_HAL_RES(res);
+    return HAL_OK;
+}
+
 /* USER CODE END 0 */
 
 /**
@@ -98,6 +135,10 @@ int main(void)
   /* USER CODE BEGIN 2 */
 
   HAL_GPIO_WritePin(USER_LED_GPIO_Port, USER_LED_Pin, GPIO_PIN_SET);
+
+  if (save_configs_to_flash(0.0f, 0.0f, ACQUISINATOR_ID) < HAL_OK) {
+    Error_Handler();
+  }
 
   BootInit();
   /* USER CODE END 2 */

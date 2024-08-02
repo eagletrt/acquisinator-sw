@@ -78,6 +78,7 @@ extern uint32_t last_set_error;
 
 bool calibration_ammo_pos_flag               = false;
 bool calibration_reset_link_deformation_flag = false;
+uint32_t acquisinator_id_from_flash    = ACQUISINATOR_ID;
 
 #define POT_REST_POS_IDX_DX 0
 #define POT_REST_POS_IDX_SX 1
@@ -91,7 +92,7 @@ float c_ammo_pos_sx   = 0.0f;
         return res;        \
     }
 
-HAL_StatusTypeDef save_configs_to_flash(float data1, float data2) {
+HAL_StatusTypeDef save_configs_to_flash(float data1, float data2, uint32_t acquisinatore_version) {
     HAL_StatusTypeDef res = HAL_FLASH_Unlock();
     CHECK_HAL_RES(res);
 
@@ -113,6 +114,10 @@ HAL_StatusTypeDef save_configs_to_flash(float data1, float data2) {
     res = HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, ACQUISINATOR_CONFIG_RESERVED_ADDRESS + sizeof(data1), flash_config_union.d);
     CHECK_HAL_RES(res);
 
+    res = HAL_FLASH_Program(
+        FLASH_TYPEPROGRAM_WORD, ACQUISINATOR_CONFIG_RESERVED_ADDRESS + sizeof(data1) + sizeof(data2), acquisinatore_version);
+    CHECK_HAL_RES(res);
+
     res = HAL_FLASH_Lock();
     CHECK_HAL_RES(res);
     return HAL_OK;
@@ -121,6 +126,12 @@ HAL_StatusTypeDef save_configs_to_flash(float data1, float data2) {
 float read_float_from_flash(float *address) {
     if (address == NULL)
         return 0.0f;
+    return *address;
+}
+
+uint32_t read_uint32_from_flash(uint32_t *address) {
+    if (address == NULL)
+        return 0U;
     return *address;
 }
 
@@ -158,60 +169,138 @@ HAL_StatusTypeDef link_deformation_calibration_check(float ch, float *o1, float 
     if (calibration_reset_link_deformation_flag) {
         calibration_reset_link_deformation_flag = false;
         *o2                                     = LINK_DEFORMATION_CALIBRATION_VALUE - ch;  // TODO: use the oversampled one
-        return save_configs_to_flash(*o1, *o2);
+        return save_configs_to_flash(*o1, *o2, ACQUISINATOR_ID);
     }
     return HAL_OK;
 }
 
 float link_deformation_routine(float ch1, float ch2, float *o1, float *o2, uint32_t *pts) {
-    static uint32_t calibration_values_last_send = 0;
-    float link_deformation                       = acquisinatore_link_deformation_from_V_to_elongation(ch2 + *o2);
+    float link_deformation = acquisinatore_link_deformation_from_V_to_elongation(ch2 + *o2);
     if (link_deformation_calibration_check(ch2, o1, o2) != HAL_OK) {
         acquisinatore_set_led_code(acquisinatore_led_code_read_write_flash);
     }
+#if ACQUISINATORE_SEND_CALIBRATIONS_OFFSETS
+    static uint32_t calibration_values_last_send = 0;
     if ((HAL_GetTick() - calibration_values_last_send) > SECONDARY_ACQUISINATOR_CALIBRATIONS_OFFSETS_CYCLE_TIME_MS) {
         calibration_values_last_send = HAL_GetTick();
         acquisinatore_send_calibration_offsets(*o1, *o2);
     }
+#endif
     return link_deformation;
 }
 
 #if ACQUISINATOR_ID == ACQUISINATOR_ID_5
 
-// potenziometri dietro
+// rear ammos
 void acquisinator_task(float ch1, float ch2, float *o1, float *o2, uint32_t *pts) {
     static uint32_t last_send = 0;
-    if (get_timestamp_ms() - last_send > 10) {
+    if (get_timestamp_ms() - last_send > ACQUISINATORE_AMMO_POSITION_DELAY_MS) {
         last_send        = get_timestamp_ms();
         float pot_pos_dx = MV_TO_POT_POS(ch1) - pot_rest_pos[POT_REST_POS_IDX_DX];
         float pot_pos_sx = MV_TO_POT_POS(ch2) - pot_rest_pos[POT_REST_POS_IDX_SX];
         c_ammo_pos_dx    = POT_TO_AMMO_POS(pot_pos_dx) * -1;
         c_ammo_pos_sx    = POT_TO_AMMO_POS(pot_pos_sx) * -1;
-        acquisinatore_send_debug_1_values(ch1 / 10.0f, ch2 / 10.0f, 0.0f, 0.0f);
+        acquisinatore_send_debug_5_values(ch1 / 10.0f, ch2 / 10.0f, 0.0f);
         acquisinatore_send_ammo_pos(0.0f, 0.0f, c_ammo_pos_sx, c_ammo_pos_dx);  // controllare che i canali siano giusti
     }
 }
 
 #elif ACQUISINATOR_ID == ACQUISINATOR_ID_1
 
-// potenziometri davanti
+// front ammos
 void acquisinator_task(float ch1, float ch2, float *o1, float *o2, uint32_t *pts) {
     static uint32_t last_send = 0;
-    if (get_timestamp_ms() - last_send > 10) {
+    if (get_timestamp_ms() - last_send > ACQUISINATORE_AMMO_POSITION_DELAY_MS) {
         last_send        = get_timestamp_ms();
         float pot_pos_dx = MV_TO_POT_POS(ch1) - pot_rest_pos[POT_REST_POS_IDX_DX];
         float pot_pos_sx = MV_TO_POT_POS(ch2) - pot_rest_pos[POT_REST_POS_IDX_SX];
         c_ammo_pos_dx    = POT_TO_AMMO_POS(pot_pos_dx) * -1;
         c_ammo_pos_sx    = POT_TO_AMMO_POS(pot_pos_sx) * -1;
-        acquisinatore_send_debug_2_values(ch1 / 10.0f, ch2 / 10.0f, 0.0f, 0.0f);
+        acquisinatore_send_debug_6_values(ch1 / 10.0f, ch2 / 10.0f, 0.0f);
         acquisinatore_send_ammo_pos(c_ammo_pos_sx, c_ammo_pos_dx, 0.0f, 0.0f);  // controllare che i canali siano giusti
+    }
+}
+
+#elif ACQUISINATOR_ID == ACQUISINATOR_ID_9
+
+/***
+* STRAIN GAUGES FOR REAR RIGHT WHEEL
+* 9 -> F1011
+* 10-> F36
+* 12-> F46
+* 4 -> F17
+* 13-> F58
+* 6 -> F27
+*/
+
+// F1011
+void acquisinator_task(float ch1, float ch2, float *o1, float *o2, uint32_t *pts) {
+    float link_deformation                     = link_deformation_routine(ch1, ch2, o1, o2, pts);
+    static uint32_t last_link_deformation_sent = 0;
+    if ((get_timestamp_ms() - last_link_deformation_sent) > ACQUISINATORE_LINK_DEFORMATION_DELAY_MS) {
+        acquisinatore_send_strain_gauge_val_rr_wheel(link_deformation, secondary_link_deformation_rr_wheel_rod_id_F1011);
+    }
+}
+
+#elif ACQUISINATOR_ID == ACQUISINATOR_ID_10
+
+// F36
+void acquisinator_task(float ch1, float ch2, float *o1, float *o2, uint32_t *pts) {
+    float link_deformation                     = link_deformation_routine(ch1, ch2, o1, o2, pts);
+    static uint32_t last_link_deformation_sent = 0;
+    if ((get_timestamp_ms() - last_link_deformation_sent) > ACQUISINATORE_LINK_DEFORMATION_DELAY_MS) {
+        acquisinatore_send_strain_gauge_val_rr_wheel(link_deformation, secondary_link_deformation_rr_wheel_rod_id_F36);
+    }
+}
+
+#elif ACQUISINATOR_ID == ACQUISINATOR_ID_12
+
+// F46
+void acquisinator_task(float ch1, float ch2, float *o1, float *o2, uint32_t *pts) {
+    float link_deformation                     = link_deformation_routine(ch1, ch2, o1, o2, pts);
+    static uint32_t last_link_deformation_sent = 0;
+    if ((get_timestamp_ms() - last_link_deformation_sent) > ACQUISINATORE_LINK_DEFORMATION_DELAY_MS) {
+        acquisinatore_send_strain_gauge_val_rr_wheel(link_deformation, secondary_link_deformation_rr_wheel_rod_id_F46);
+    }
+}
+
+#elif ACQUISINATOR_ID == ACQUISINATOR_ID_4
+
+// F17
+void acquisinator_task(float ch1, float ch2, float *o1, float *o2, uint32_t *pts) {
+    float link_deformation                     = link_deformation_routine(ch1, ch2, o1, o2, pts);
+    static uint32_t last_link_deformation_sent = 0;
+    if ((get_timestamp_ms() - last_link_deformation_sent) > ACQUISINATORE_LINK_DEFORMATION_DELAY_MS) {
+        acquisinatore_send_strain_gauge_val_rr_wheel(link_deformation, secondary_link_deformation_rr_wheel_rod_id_F17);
+    }
+}
+
+#elif ACQUISINATOR_ID == ACQUISINATOR_ID_13
+
+// F58
+void acquisinator_task(float ch1, float ch2, float *o1, float *o2, uint32_t *pts) {
+    float link_deformation                     = link_deformation_routine(ch1, ch2, o1, o2, pts);
+    static uint32_t last_link_deformation_sent = 0;
+    if ((get_timestamp_ms() - last_link_deformation_sent) > ACQUISINATORE_LINK_DEFORMATION_DELAY_MS) {
+        acquisinatore_send_strain_gauge_val_rr_wheel(link_deformation, secondary_link_deformation_rr_wheel_rod_id_F58);
+    }
+}
+
+#elif ACQUISINATOR_ID == ACQUISINATOR_ID_6
+
+// F27
+void acquisinator_task(float ch1, float ch2, float *o1, float *o2, uint32_t *pts) {
+    float link_deformation                     = link_deformation_routine(ch1, ch2, o1, o2, pts);
+    static uint32_t last_link_deformation_sent = 0;
+    if ((get_timestamp_ms() - last_link_deformation_sent) > ACQUISINATORE_LINK_DEFORMATION_DELAY_MS) {
+        acquisinatore_send_strain_gauge_val_rr_wheel(link_deformation, secondary_link_deformation_rr_wheel_rod_id_F27);
     }
 }
 
 #else
 
+#warning EMPTY ACQUISINATOR TASK
 void acquisinator_task(float ch1, float ch2, float *o1, float *o2, uint32_t *pts) {
-#warning NO ACQUISINATOR TASKS
 }
 
 #endif
@@ -260,16 +349,33 @@ int main(void) {
 #endif
 
     acquisinatore_set_led_code(acquisinatore_led_code_all_ok);
-    uint32_t previous_timestamp         = HAL_GetTick();
-    uint32_t version_previous_timestamp = HAL_GetTick();
+    uint32_t previous_timestamp               = HAL_GetTick();
+    uint32_t version_previous_timestamp       = HAL_GetTick();
+    uint32_t errors_in_can_previous_timestamp = HAL_GetTick();
     float offset1, offset2 = 0.0f;
 
-    // if (save_configs_to_flash(0.0f, 0.0f) < HAL_OK) {
-    // Error_Handler();
-    // }
+#if ACQUISINATOR_RESETS_TO_DEFAULT_CONFIGS == 1
+    // RESET CONFIGS TO FLASH
+    if (save_configs_to_flash(0.0f, 0.0f, ACQUISINATOR_ID) != HAL_OK) {
+        Error_Handler();
+    }
+#endif
 
-    offset1 = read_float_from_flash((float *)ACQUISINATOR_CONFIG_RESERVED_ADDRESS);
-    offset2 = read_float_from_flash((float *)(ACQUISINATOR_CONFIG_RESERVED_ADDRESS + sizeof(float)));
+    offset1                          = read_float_from_flash((float *)ACQUISINATOR_CONFIG_RESERVED_ADDRESS);
+    offset2                          = read_float_from_flash((float *)(ACQUISINATOR_CONFIG_RESERVED_ADDRESS + sizeof(float)));
+    acquisinator_id_from_flash = read_uint32_from_flash((uint32_t *)(ACQUISINATOR_CONFIG_RESERVED_ADDRESS + (2 * sizeof(float))));
+
+    if (acquisinator_id_from_flash == 0 || acquisinator_id_from_flash != ACQUISINATOR_ID) {
+        // the wrong firmware was flashed!!!
+        acquisinatore_set_led_code(acquisinatore_led_code_flashed_firmware_with_wrong_id);
+    }
+
+    /*
+    // [not really necessary] save the read config again to flash
+    if (save_configs_to_flash(offset1, offset2, acquisinator_id_from_flash) != HAL_OK) {
+        Error_Handler();
+    }
+    */
 
     /* USER CODE END 2 */
 
@@ -280,8 +386,12 @@ int main(void) {
             acquisinatore_send_version();
             version_previous_timestamp = HAL_GetTick();
         }
-        float ltc1865_channel1_value_in_V = ltc1865_read(ltc1865_SE_CH1);  // normally for the ntc temperature sensor
-        float ltc1865_channel2_value_in_V = ltc1865_read(ltc1865_SE_CH2);  // normally for the strain gauge
+        if ((HAL_GetTick() - errors_in_can_previous_timestamp) > SECONDARY_ACQUISINATOR_ERRORS_CYCLE_TIME_MS) {
+            acquisinatore_send_errors();
+            errors_in_can_previous_timestamp = HAL_GetTick();
+        }
+        float ltc1865_channel1_value_in_V = ltc1865_read(ltc1865_SE_CH1);  // normally the channel for the ntc temperature sensor
+        float ltc1865_channel2_value_in_V = ltc1865_read(ltc1865_SE_CH2);  // normally the channel for the strain gauge
         if (ltc1865_channel1_value_in_V == -1 || ltc1865_channel2_value_in_V == -1) {
             acquisinatore_set_led_code(acquisinatore_led_code_spi_error);
         }

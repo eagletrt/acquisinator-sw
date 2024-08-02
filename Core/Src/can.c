@@ -28,6 +28,7 @@
 #include "error_codes.h"
 
 int acquisinatore_can_id;
+extern uint32_t acquisinator_id_from_flash;
 
 can_mgr_msg_t can_messages_states[N_MONITORED_MESSAGES];
 uint8_t can_messages_is_new[N_MONITORED_MESSAGES];
@@ -53,7 +54,7 @@ int secondary_acquisinator_jmp_to_blt_handler(can_mgr_msg_t *msg) {
     secondary_acquisinator_jmp_to_blt_converted_t jmp_converted;
     secondary_acquisinator_jmp_to_blt_unpack(&jmp_raw, msg->data, SECONDARY_ACQUISINATOR_JMP_TO_BLT_BYTE_SIZE);
     secondary_acquisinator_jmp_to_blt_raw_to_conversion_struct(&jmp_converted, &jmp_raw);
-    if (jmp_converted.acquisinatore_id == ACQUISINATOR_ID) {
+    if (jmp_converted.acquisinatore_id == acquisinator_id_from_flash) {
         HAL_NVIC_SystemReset();
     }
     return 0;
@@ -110,23 +111,50 @@ void acquisinatore_send_strain_gauge_val_rr_wheel(secondary_link_deformation_rr_
 
 void acquisinatore_send_calibration_offsets(float off1, float off2) {
     secondary_acquisinator_calibrations_offsets_converted_t converted = {
-        .acquisinator_id = ACQUISINATOR_ID, .offset1 = off1, .offset2 = off2};
+        .acquisinator_id = acquisinator_id_from_flash, .offset1 = off1, .offset2 = off2};
     CANLIB_PACK_AND_SEND(acquisinator_calibrations_offsets, ACQUISINATOR_CALIBRATIONS_OFFSETS, secondary, SECONDARY);
 }
 
-void acquisinatore_send_debug_1_values(float v1, float v2, float v3, float v4) {
-    secondary_debug_signal_1_converted_t converted = {.field_1 = v1, .field_2 = v2, .field_3 = v3, .field_4 = v4};
-    CANLIB_PACK_AND_SEND(debug_signal_1, DEBUG_SIGNAL_1, secondary, SECONDARY);
+void acquisinatore_send_debug_5_values(float v1, float v2, float v3) {
+    secondary_debug_signal_5_converted_t converted = {
+        .device_id = secondary_debug_signal_5_device_id_acquisinator, .field_1 = v1, .field_2 = v2, .field_3 = v3};
+    CANLIB_PACK_AND_SEND(debug_signal_5, DEBUG_SIGNAL_5, secondary, SECONDARY);
 }
 
-void acquisinatore_send_debug_2_values(float v1, float v2, float v3, float v4) {
-    secondary_debug_signal_2_converted_t converted = {.field_1 = v1, .field_2 = v2, .field_3 = v3, .field_4 = v4};
-    CANLIB_PACK_AND_SEND(debug_signal_2, DEBUG_SIGNAL_2, secondary, SECONDARY);
+void acquisinatore_send_debug_6_values(float v1, float v2, float v3) {
+    secondary_debug_signal_6_converted_t converted = {
+        .device_id = secondary_debug_signal_6_device_id_acquisinator, .field_1 = v1, .field_2 = v2, .field_3 = v3};
+    CANLIB_PACK_AND_SEND(debug_signal_6, DEBUG_SIGNAL_6, secondary, SECONDARY);
+}
+
+void acquisinatore_send_debug_7_values(float v1, float v2, float v3) {
+    secondary_debug_signal_7_converted_t converted = {
+        .device_id = secondary_debug_signal_7_device_id_acquisinator, .field_1 = v1, .field_2 = v2, .field_3 = v3};
+    CANLIB_PACK_AND_SEND(debug_signal_7, DEBUG_SIGNAL_7, secondary, SECONDARY);
+}
+
+void acquisinatore_send_debug_8_values(float v1, float v2, float v3) {
+    secondary_debug_signal_8_converted_t converted = {
+        .device_id = secondary_debug_signal_8_device_id_acquisinator, .field_1 = v1, .field_2 = v2, .field_3 = v3};
+    CANLIB_PACK_AND_SEND(debug_signal_8, DEBUG_SIGNAL_8, secondary, SECONDARY);
 }
 
 void acquisinatore_send_version(void) {
-    secondary_acquisinator_version_converted_t converted = {.acquisinator_id = ACQUISINATOR_ID, .canlib_build_time = CANLIB_BUILD_TIME};
+    secondary_acquisinator_version_converted_t converted = {
+        .acquisinator_id = acquisinator_id_from_flash, .canlib_build_time = CANLIB_BUILD_TIME};
     CANLIB_PACK_AND_SEND(acquisinator_version, ACQUISINATOR_VERSION, secondary, SECONDARY);
+}
+
+void acquisinatore_send_errors(void) {
+    extern uint32_t all_set_errors[acquisinatore_led_code_n_values];
+    secondary_acquisinator_errors_converted_t converted = {
+        .acquisinator_id                                            = acquisinator_id_from_flash,
+        .acquisinator_errors_acquisinatore_led_code_can_not_working = all_set_errors[acquisinatore_led_code_can_not_working],
+        .acquisinator_errors_acquisinatore_led_code_flashed_firmware_with_wrong_id =
+            all_set_errors[acquisinatore_led_code_flashed_firmware_with_wrong_id],
+        .acquisinator_errors_acquisinatore_led_code_read_write_flash = all_set_errors[acquisinatore_led_code_read_write_flash],
+        .acquisinator_errors_acquisinatore_led_code_spi_error        = all_set_errors[acquisinatore_led_code_spi_error]};
+    CANLIB_PACK_AND_SEND(acquisinator_errors, ACQUISINATOR_ERRORS, secondary, SECONDARY);
 }
 
 void acquisinatore_send_ammo_pos(float fl, float fr, float rl, float rr) {

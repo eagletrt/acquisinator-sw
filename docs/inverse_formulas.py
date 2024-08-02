@@ -1,3 +1,15 @@
+'''
+Calculations to provide correct calibration for the strain gauges without iterative process.
+The logic is the following:
+
+elongation_from_mV(mV) = elongation = 0;
+((elongation_from_mV)^(-1))(0) = mV_for_0_elongation;
+offset_to_be_applied = mV - mV_for_0_elongation;
+
+during the measurements
+mV =- offset_to_be_applied;
+'''
+
 from sympy import solve, Symbol,Eq
 from sympy.abc import x,y
 # print(acquisinatore_link_deformation_from_V_to_elongation(Symbol('x')))

@@ -47,9 +47,12 @@ void MX_CAN_Init(void);
 int can_routine(void);
 
 void acquisinatore_send_version(void);
+void acquisinatore_send_errors(void);
 void acquisinatore_send_calibration_offsets(float off1, float off2);
-void acquisinatore_send_debug_1_values(float v1, float v2, float v3, float v4);
-void acquisinatore_send_debug_2_values(float v1, float v2, float v3, float v4);
+void acquisinatore_send_debug_5_values(float v1, float v2, float v3);
+void acquisinatore_send_debug_6_values(float v1, float v2, float v3);
+void acquisinatore_send_debug_7_values(float v1, float v2, float v3);
+void acquisinatore_send_debug_8_values(float v1, float v2, float v3);
 
 void acquisinatore_send_strain_gauge_val_fl_wheel(secondary_link_deformation_fl_wheel_rod_id rod_id, float strain_gauge_val);
 void acquisinatore_send_strain_gauge_val_fr_wheel(secondary_link_deformation_fr_wheel_rod_id rod_id, float strain_gauge_val);

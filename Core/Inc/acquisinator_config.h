@@ -1,42 +1,9 @@
 #ifndef ACQUISINATOR_CONFIG_H
 #define ACQUISINATOR_CONFIG_H
 
+#include "acquisinator_id.h"
+
 #include <stdint.h>
-
-// #define ACQUISINATOR_ID_0  (0U)  // for strain gauge and air outside the radiators
-#define ACQUISINATOR_ID_1  (1U)  // for the radiators cooling temperatures, water in and out of the radiators
-#define ACQUISINATOR_ID_2  (2U)  // only strain gauge fl
-#define ACQUISINATOR_ID_3  (3U)  // only strain gauge fr
-#define ACQUISINATOR_ID_4  (4U)  // only strain gauge rr
-#define ACQUISINATOR_ID_5  (5U)
-#define ACQUISINATOR_ID_6  (6U)
-#define ACQUISINATOR_ID_7  (7U)
-#define ACQUISINATOR_ID_8  (8U)
-#define ACQUISINATOR_ID_9  (9U)
-#define ACQUISINATOR_ID_10 (10U)
-#define ACQUISINATOR_ID_11 (11U)
-#define ACQUISINATOR_ID_12 (12U)
-#define ACQUISINATOR_ID_13 (13U)
-#define ACQUISINATOR_ID_14 (14U)
-#define ACQUISINATOR_ID_15 (15U)
-#define ACQUISINATOR_ID_16 (16U)
-#define ACQUISINATOR_ID_17 (17U)
-#define ACQUISINATOR_ID_18 (18U)
-#define ACQUISINATOR_ID_19 (19U)
-#define ACQUISINATOR_ID_20 (20U)
-#define ACQUISINATOR_ID_21 (21U)
-#define ACQUISINATOR_ID_22 (22U)
-#define ACQUISINATOR_ID_23 (23U)
-#define ACQUISINATOR_ID_24 (24U)
-#define ACQUISINATOR_ID_25 (25U)
-#define ACQUISINATOR_ID_26 (26U)
-#define ACQUISINATOR_ID_27 (27U)
-#define ACQUISINATOR_ID_28 (28U)
-#define ACQUISINATOR_ID_29 (29U)
-#define ACQUISINATOR_ID_30 (30U)
-#define ACQUISINATOR_ID_31 (31U)
-
-#define ACQUISINATOR_ID (ACQUISINATOR_ID_5)
 
 #if ACQUISINATOR_ID == 0
 #error INVALID ACQUISINATOR_ID == 0
@@ -45,6 +12,9 @@
 #if ACQUISINATOR_ID == ACQUISINATOR_ID_0
 #error INVALID ACQUISINATOR_ID == ACQUISINATOR_ID_0
 #endif
+
+// WARNING: IF 1 IT RESETS THE BOARD TO DEFAULT CONFIGURATIONS!!!
+#define ACQUISINATOR_RESETS_TO_DEFAULT_CONFIGS (1U)
 
 /****
  * Memory mapping:
@@ -96,7 +66,12 @@ typedef enum { ltc1865_DIFF, ltc1865_DIFF_INVERTED, ltc1865_SE_CH1, ltc1865_SE_C
 #define ACQUISINATORE_OLD_MOVING_AVG    (3U)
 #define ACQUISINATORE_FILTER_TYPE       ACQUISINATORE_SIMPLE_MOVING_AVG
 
-#define ACQUISINATORE_LINK_DEFORMATION_SAMPLING_RATE (50U)  // Hz
+#define ACQUISINATORE_SEND_CALIBRATIONS_OFFSETS      (0U)
+#define ACQUISINATORE_LINK_DEFORMATION_SAMPLING_RATE (10U)  // Hz
+#define ACQUISINATORE_AMMO_POSITION_SAMPLING_RATE    (10U)  // Hz
+
+#define ACQUISINATORE_LINK_DEFORMATION_DELAY_MS (1000U / ACQUISINATORE_LINK_DEFORMATION_SAMPLING_RATE)  // ms
+#define ACQUISINATORE_AMMO_POSITION_DELAY_MS    (1000U / ACQUISINATORE_AMMO_POSITION_SAMPLING_RATE)     // ms
 
 enum {
     ACQUISINATOR_SECONDARY_ACQUISINATOR_JMP_TO_BLT = 0,
@@ -115,6 +90,7 @@ typedef enum {
     acquisinatore_led_code_can_not_working,
     acquisinatore_led_code_spi_error,
     acquisinatore_led_code_read_write_flash,
+    acquisinatore_led_code_flashed_firmware_with_wrong_id,
     acquisinatore_led_code_n_values
 } acquisinatore_led_code_t;
 
@@ -144,7 +120,7 @@ Potentiometer length: 123 mm to 173 mm
 #define FROM_MILLIVOLT_TO_POT_POS(v) (((3260.0f - (float)v)) / MILLIVOLT_PER_MM);
 #define DEF_POT_DX_REST_POS          (18.6f + 1.9f)    // 0.0f // 21.887383f
 #define DEF_POT_SX_REST_POS          (16.882f + 2.5f)  // 0.0f // 21.403099f
-#define AMMO_SX_REST_POS             POT_MMO_POS(POT_SX_REST_POS)
+#define AMMO_SX_REST_POS             POT_TO_AMMO_POS(POT_SX_REST_POS)
 #define AMMO_DX_REST_POS             POT_TO_AMMO_POS(POT_DX_REST_POS)
 #define MV_TO_POT_POS(v)             ((62.7126571336371f) - (0.0149283343200212f * (v)) - (1.29019872658103e-07f * (v) * (v)))
 

@@ -13,3 +13,4 @@
 STM32Make.make
 Makefile
 **/__pycache__/**
+binaries/**
