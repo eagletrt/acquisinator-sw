@@ -2,9 +2,9 @@
 
 #if ACQUISINATORE_FILTER_TYPE == ACQUISINATORE_SIMPLE_MOVING_AVG
 
-uint16_t acquisinatore_mov_avg_window[ACQUISINATORE_SIMPLE_MOVING_AVG_KERNEL_SIZE] = {0};
-uint16_t acquisinatore_kernel[ACQUISINATORE_SIMPLE_MOVING_AVG_KERNEL_SIZE]         = {0};
-uint8_t acquisinatore_mov_avg_window_idx                                           = 0;
+uint16_t acquisinatore_mov_avg_window[LTC1865_N_CHANNELS][ACQUISINATORE_SIMPLE_MOVING_AVG_KERNEL_SIZE] = {0};
+uint16_t acquisinatore_kernel[ACQUISINATORE_SIMPLE_MOVING_AVG_KERNEL_SIZE]                             = {0};
+uint8_t acquisinatore_mov_avg_window_idx[LTC1865_N_CHANNELS]                                           = {0};
 
 #elif ACQUISINATORE_FILTER_TYPE == ACQUISINATORE_GAUSSIAN_FILTER
 

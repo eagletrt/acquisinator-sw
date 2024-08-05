@@ -10,10 +10,12 @@ uint32_t all_set_errors[acquisinatore_led_code_n_values] = {0};
 #define WAITING_PERIOD            (LED_TOGGLING_WAITING_TIME * 3)
 
 void acquisinatore_set_led_code(acquisinatore_led_code_t error_code) {
+    if (error_code == acquisinatore_led_code_can_not_working) {
+        system_reset();
+    }
     all_set_errors[error_code] = 1;
     last_set_error             = error_code;
     if (((error_countdown == acquisinatore_led_code_no_error && (get_timestamp_ms() - previous_time) > WAITING_PERIOD))) {
-        last_set_error       = error_code;
         error_countdown      = error_code * 2;
         previous_time        = get_timestamp_ms();
         acquisinatore_led_on = 0;

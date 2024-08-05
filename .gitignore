@@ -14,3 +14,6 @@ STM32Make.make
 Makefile
 **/__pycache__/**
 binaries/**
+
+# probably not correct
+docs/inverse_formulas_ammo_compression.py

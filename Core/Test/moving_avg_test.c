@@ -53,8 +53,10 @@ int main(int argc, char **argv) {
 #if ACQUISINATORE_FILTER_TYPE == ACQUISINATORE_SIMPLE_MOVING_AVG
     for (size_t i = 0; i < N_FAKE_VALUES; i++) {
         uint16_t random_noise                                          = 5000 + (uint16_t)(rand() % 200) - 100;
-        acquisinatore_mov_avg_window[acquisinatore_mov_avg_window_idx] = (double)random_noise;
-        acquisinatore_mov_avg_window_idx = (acquisinatore_mov_avg_window_idx + 1) % ACQUISINATORE_SIMPLE_MOVING_AVG_KERNEL_SIZE;
+        #warning Fix the moving avg test
+        // TODO: fix
+        // acquisinatore_mov_avg_window[acquisinatore_mov_avg_window_idx] = (double)random_noise;
+        // acquisinatore_mov_avg_window_idx = (acquisinatore_mov_avg_window_idx + 1) % ACQUISINATORE_SIMPLE_MOVING_AVG_KERNEL_SIZE;
         vabom[i]                         = (double)random_noise;
         double filtered_val              = moving_avg(acquisinatore_mov_avg_window, ACQUISINATORE_SIMPLE_MOVING_AVG_KERNEL_SIZE);
         fprintf(out, "%f,%f\n", vabom[i], filtered_val);

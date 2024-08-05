@@ -14,7 +14,7 @@
 #endif
 
 // WARNING: IF 1 IT RESETS THE BOARD TO DEFAULT CONFIGURATIONS!!!
-#define ACQUISINATOR_RESETS_TO_DEFAULT_CONFIGS (1U)
+#define ACQUISINATOR_RESETS_TO_DEFAULT_CONFIGS (0U)
 
 /****
  * Memory mapping:
@@ -80,8 +80,12 @@ enum {
     N_MONITORED_MESSAGES
 };
 
-#define CAN_MESSAGES_HANDLERS {secondary_acquisinator_jmp_to_blt_handler, secondary_link_deformation_set_calibration_handler}
+#define CAN_MESSAGES_HANDLERS                            \
+    {secondary_acquisinator_jmp_to_blt_handler,          \
+     secondary_link_deformation_set_calibration_handler, \
+     secondary_ammo_pos_set_calibration_handler}
 
+#define AMMO_COMPRESSION_CALIBRATION_VALUE (4058.554551620902f)
 #define LINK_DEFORMATION_CALIBRATION_VALUE (1.5010000000001358f)
 
 typedef enum {
@@ -96,6 +100,7 @@ typedef enum {
 
 void acquisinatore_turn_led(int on);
 uint32_t get_timestamp_ms(void);
+void system_reset(void);
 
 #define ACQUISINATORE_VREF_INT (3.29f)
 
@@ -115,14 +120,16 @@ uint32_t get_timestamp_ms(void);
 0 mV - 3260 mV
 Potentiometer length: 123 mm to 173 mm
 */
+#define OFFSET_FOR_SECOND_CHANNEL_mV (0.854f)
 #define MILLIVOLT_PER_MM             (65.2f)
 #define POT_TO_AMMO_POS(s)           ((0.851361811586514f * s) + (0.000533184086178801f * s * s))
 #define FROM_MILLIVOLT_TO_POT_POS(v) (((3260.0f - (float)v)) / MILLIVOLT_PER_MM);
-#define DEF_POT_DX_REST_POS          (18.6f + 1.9f)    // 0.0f // 21.887383f
-#define DEF_POT_SX_REST_POS          (16.882f + 2.5f)  // 0.0f // 21.403099f
+#define DEF_POT_DX_REST_POS          (0.0f)
+#define DEF_POT_SX_REST_POS          (0.0f)
 #define AMMO_SX_REST_POS             POT_TO_AMMO_POS(POT_SX_REST_POS)
 #define AMMO_DX_REST_POS             POT_TO_AMMO_POS(POT_DX_REST_POS)
-#define MV_TO_POT_POS(v)             ((62.7126571336371f) - (0.0149283343200212f * (v)) - (1.29019872658103e-07f * (v) * (v)))
+// #define MV_TO_POT_POS(v)             ((62.7126571336371f) - (0.0149283343200212f * (v)) - (1.29019872658103e-07f * (v) * (v)))
+// #define POT_POS_TO_MV(pos)           ((61911.4031572796f) * sqrtf(1.0f - 0.00202209752294489f*pos) - 57852.8486056587f)
 
 #define CANLIB_PACK_AND_SEND(msg_name, MSG_NAME, ntw, NTW)                   \
     can_mgr_msg_t msg_to_be_sent = {0};                                      \

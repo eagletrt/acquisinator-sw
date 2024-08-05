@@ -55,7 +55,7 @@ int secondary_acquisinator_jmp_to_blt_handler(can_mgr_msg_t *msg) {
     secondary_acquisinator_jmp_to_blt_unpack(&jmp_raw, msg->data, SECONDARY_ACQUISINATOR_JMP_TO_BLT_BYTE_SIZE);
     secondary_acquisinator_jmp_to_blt_raw_to_conversion_struct(&jmp_converted, &jmp_raw);
     if (jmp_converted.acquisinatore_id == acquisinator_id_from_flash) {
-        HAL_NVIC_SystemReset();
+        system_reset();
     }
     return 0;
 }

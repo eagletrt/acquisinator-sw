@@ -78,13 +78,13 @@ extern uint32_t last_set_error;
 
 bool calibration_ammo_pos_flag               = false;
 bool calibration_reset_link_deformation_flag = false;
-uint32_t acquisinator_id_from_flash    = ACQUISINATOR_ID;
+uint32_t acquisinator_id_from_flash          = ACQUISINATOR_ID;
 
 #define POT_REST_POS_IDX_DX 0
 #define POT_REST_POS_IDX_SX 1
 float pot_rest_pos[2] = {DEF_POT_DX_REST_POS, DEF_POT_SX_REST_POS};
-float c_ammo_pos_dx   = 0.0f;
-float c_ammo_pos_sx   = 0.0f;
+// float c_ammo_pos_dx   = 0.0f;
+// float c_ammo_pos_sx   = 0.0f;
 
 // TODO: include the crash debug stuff so that we can debug strange stuff remotely
 #define CHECK_HAL_RES(res) \
@@ -164,12 +164,26 @@ uint32_t get_timestamp_ms(void) {
     return HAL_GetTick();
 }
 
+void system_reset(void) {
+    HAL_NVIC_SystemReset();
+}
+
 // This assumes that o2 is always the offset for strain gauge
 HAL_StatusTypeDef link_deformation_calibration_check(float ch, float *o1, float *o2) {
     if (calibration_reset_link_deformation_flag) {
         calibration_reset_link_deformation_flag = false;
-        *o2                                     = LINK_DEFORMATION_CALIBRATION_VALUE - ch;  // TODO: use the oversampled one
-        return save_configs_to_flash(*o1, *o2, ACQUISINATOR_ID);
+        *o2                                     = LINK_DEFORMATION_CALIBRATION_VALUE - ch;
+        return save_configs_to_flash(*o1, *o2, acquisinator_id_from_flash);
+    }
+    return HAL_OK;
+}
+
+HAL_StatusTypeDef ammo_compression_calibration_check(float c_ammo_pos_dx, float c_ammo_pos_sx, float *o1, float *o2) {
+    if (calibration_ammo_pos_flag) {
+        calibration_ammo_pos_flag = false;
+        *o1                       = -c_ammo_pos_dx;
+        *o2                       = -c_ammo_pos_sx;
+        return save_configs_to_flash(*o1, *o2, acquisinator_id_from_flash);
     }
     return HAL_OK;
 }
@@ -194,14 +208,24 @@ float link_deformation_routine(float ch1, float ch2, float *o1, float *o2, uint3
 // rear ammos
 void acquisinator_task(float ch1, float ch2, float *o1, float *o2, uint32_t *pts) {
     static uint32_t last_send = 0;
+    ch2 -= OFFSET_FOR_SECOND_CHANNEL_mV;
+
+    float pot_pos_dx    = FROM_MILLIVOLT_TO_POT_POS(ch1 * 1000.0f);
+    float pot_pos_sx    = FROM_MILLIVOLT_TO_POT_POS(ch2 * 1000.0f);
+    float c_ammo_pos_dx = POT_TO_AMMO_POS(pot_pos_dx) * (-1.0f) + *o1;
+    float c_ammo_pos_sx = POT_TO_AMMO_POS(pot_pos_sx) * (-1.0f) + *o2;
+
+    if (ammo_compression_calibration_check(c_ammo_pos_dx, c_ammo_pos_sx, o1, o2) != HAL_OK) {
+        // TODO: handle errors
+    }
+
     if (get_timestamp_ms() - last_send > ACQUISINATORE_AMMO_POSITION_DELAY_MS) {
-        last_send        = get_timestamp_ms();
-        float pot_pos_dx = MV_TO_POT_POS(ch1) - pot_rest_pos[POT_REST_POS_IDX_DX];
-        float pot_pos_sx = MV_TO_POT_POS(ch2) - pot_rest_pos[POT_REST_POS_IDX_SX];
-        c_ammo_pos_dx    = POT_TO_AMMO_POS(pot_pos_dx) * -1;
-        c_ammo_pos_sx    = POT_TO_AMMO_POS(pot_pos_sx) * -1;
-        acquisinatore_send_debug_5_values(ch1 / 10.0f, ch2 / 10.0f, 0.0f);
-        acquisinatore_send_ammo_pos(0.0f, 0.0f, c_ammo_pos_sx, c_ammo_pos_dx);  // controllare che i canali siano giusti
+        last_send = get_timestamp_ms();
+        acquisinatore_send_debug_7_values(ch1 / 10.0f, ch2 / 10.0f, 0.0f);
+        // acquisinatore_send_ammo_pos(-20.0f, -20.0f, c_ammo_pos_sx, c_ammo_pos_dx);
+        // acquisinatore_send_calibration_offsets((*o1) / 10000.0f, (*o2) / 10000.0f);
+        // rear ammos
+        acquisinatore_send_calibration_offsets(c_ammo_pos_sx, c_ammo_pos_dx);
     }
 }
 
@@ -210,14 +234,20 @@ void acquisinator_task(float ch1, float ch2, float *o1, float *o2, uint32_t *pts
 // front ammos
 void acquisinator_task(float ch1, float ch2, float *o1, float *o2, uint32_t *pts) {
     static uint32_t last_send = 0;
+    ch2 -= OFFSET_FOR_SECOND_CHANNEL_mV;
+
+    float pot_pos_dx    = FROM_MILLIVOLT_TO_POT_POS(ch1 * 1000.0f);
+    float pot_pos_sx    = FROM_MILLIVOLT_TO_POT_POS(ch2 * 1000.0f);
+    float c_ammo_pos_dx = POT_TO_AMMO_POS(pot_pos_dx) * (-1.0f) + *o1;
+    float c_ammo_pos_sx = POT_TO_AMMO_POS(pot_pos_sx) * (-1.0f) + *o2;
+
+    if (ammo_compression_calibration_check(c_ammo_pos_dx, c_ammo_pos_sx, o1, o2) != HAL_OK) {
+        // TODO: handle errors
+    }
     if (get_timestamp_ms() - last_send > ACQUISINATORE_AMMO_POSITION_DELAY_MS) {
-        last_send        = get_timestamp_ms();
-        float pot_pos_dx = MV_TO_POT_POS(ch1) - pot_rest_pos[POT_REST_POS_IDX_DX];
-        float pot_pos_sx = MV_TO_POT_POS(ch2) - pot_rest_pos[POT_REST_POS_IDX_SX];
-        c_ammo_pos_dx    = POT_TO_AMMO_POS(pot_pos_dx) * -1;
-        c_ammo_pos_sx    = POT_TO_AMMO_POS(pot_pos_sx) * -1;
+        last_send = get_timestamp_ms();
         acquisinatore_send_debug_6_values(ch1 / 10.0f, ch2 / 10.0f, 0.0f);
-        acquisinatore_send_ammo_pos(c_ammo_pos_sx, c_ammo_pos_dx, 0.0f, 0.0f);  // controllare che i canali siano giusti
+        acquisinatore_send_ammo_pos(c_ammo_pos_sx, c_ammo_pos_dx, 0.0f, 0.0f);
     }
 }
 
@@ -352,6 +382,7 @@ int main(void) {
     uint32_t previous_timestamp               = HAL_GetTick();
     uint32_t version_previous_timestamp       = HAL_GetTick();
     uint32_t errors_in_can_previous_timestamp = HAL_GetTick();
+
     float offset1, offset2 = 0.0f;
 
 #if ACQUISINATOR_RESETS_TO_DEFAULT_CONFIGS == 1
@@ -361,8 +392,8 @@ int main(void) {
     }
 #endif
 
-    offset1                          = read_float_from_flash((float *)ACQUISINATOR_CONFIG_RESERVED_ADDRESS);
-    offset2                          = read_float_from_flash((float *)(ACQUISINATOR_CONFIG_RESERVED_ADDRESS + sizeof(float)));
+    offset1                    = read_float_from_flash((float *)ACQUISINATOR_CONFIG_RESERVED_ADDRESS);
+    offset2                    = read_float_from_flash((float *)(ACQUISINATOR_CONFIG_RESERVED_ADDRESS + sizeof(float)));
     acquisinator_id_from_flash = read_uint32_from_flash((uint32_t *)(ACQUISINATOR_CONFIG_RESERVED_ADDRESS + (2 * sizeof(float))));
 
     if (acquisinator_id_from_flash == 0 || acquisinator_id_from_flash != ACQUISINATOR_ID) {

@@ -110,9 +110,10 @@ float ltc1865_read(ltc1865_channel_t channel) {
 #if ACQUISINATORE_FILTER_TYPE == ACQUISINATORE_NO_FILTER
     current_filtered_value = current_raw_value;
 #elif ACQUISINATORE_FILTER_TYPE == ACQUISINATORE_SIMPLE_MOVING_AVG
-    acquisinatore_mov_avg_window[acquisinatore_mov_avg_window_idx] = current_raw_value;
-    acquisinatore_mov_avg_window_idx = (acquisinatore_mov_avg_window_idx + 1) % ACQUISINATORE_SIMPLE_MOVING_AVG_KERNEL_SIZE;
-    current_filtered_value           = moving_avg(acquisinatore_mov_avg_window, ACQUISINATORE_SIMPLE_MOVING_AVG_KERNEL_SIZE);
+    acquisinatore_mov_avg_window[channel][acquisinatore_mov_avg_window_idx[channel]] = current_raw_value;
+    acquisinatore_mov_avg_window_idx[channel]                                        = (acquisinatore_mov_avg_window_idx[channel] + 1) %
+                                                ACQUISINATORE_SIMPLE_MOVING_AVG_KERNEL_SIZE;
+    current_filtered_value = moving_avg(acquisinatore_mov_avg_window[channel], ACQUISINATORE_SIMPLE_MOVING_AVG_KERNEL_SIZE);
 #elif ACQUISINATORE_FILTER_TYPE == ACQUISINATORE_GAUSSIAN_FILTER
 #error Gaussian filter not implemented
 #elif ACQUISINATORE_FILTER_TYPE == ACQUISINATORE_OLD_MOVING_AVG

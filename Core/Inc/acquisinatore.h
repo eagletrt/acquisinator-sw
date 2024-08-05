@@ -8,11 +8,11 @@
 
 #if ACQUISINATORE_FILTER_TYPE == ACQUISINATORE_SIMPLE_MOVING_AVG
 
-#define ACQUISINATORE_SIMPLE_MOVING_AVG_KERNEL_SIZE (25U)
+#define ACQUISINATORE_SIMPLE_MOVING_AVG_KERNEL_SIZE (10U)
 
-extern uint16_t acquisinatore_mov_avg_window[ACQUISINATORE_SIMPLE_MOVING_AVG_KERNEL_SIZE];
+extern uint16_t acquisinatore_mov_avg_window[LTC1865_N_CHANNELS][ACQUISINATORE_SIMPLE_MOVING_AVG_KERNEL_SIZE];
 extern uint16_t acquisinatore_kernel[ACQUISINATORE_SIMPLE_MOVING_AVG_KERNEL_SIZE];
-extern uint8_t acquisinatore_mov_avg_window_idx;
+extern uint8_t acquisinatore_mov_avg_window_idx[LTC1865_N_CHANNELS];
 uint16_t moving_avg(uint16_t *, size_t);
 
 #elif ACQUISINATORE_FILTER_TYPE == ACQUISINATORE_GAUSSIAN_FILTER
