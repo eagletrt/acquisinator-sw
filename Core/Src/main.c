@@ -161,7 +161,7 @@ void acquisinatore_turn_led(int on) {
 }
 
 uint32_t get_timestamp_ms(void) {
-    return HAL_GetTick();
+    return HAL_GetTick();  //+ ACQUISINATOR_ID;
 }
 
 void system_reset(void) {
@@ -195,8 +195,9 @@ float link_deformation_routine(float ch1, float ch2, float *o1, float *o2, uint3
     }
 #if ACQUISINATORE_SEND_CALIBRATIONS_OFFSETS
     static uint32_t calibration_values_last_send = 0;
-    if ((HAL_GetTick() - calibration_values_last_send) > SECONDARY_ACQUISINATOR_CALIBRATIONS_OFFSETS_CYCLE_TIME_MS) {
-        calibration_values_last_send = HAL_GetTick();
+    if ((get_timestamp_ms() + acquisinator_id_from_flash - calibration_values_last_send) >
+        SECONDARY_ACQUISINATOR_CALIBRATIONS_OFFSETS_CYCLE_TIME_MS) {
+        calibration_values_last_send = get_timestamp_ms();
         acquisinatore_send_calibration_offsets(*o1, *o2);
     }
 #endif
@@ -222,10 +223,7 @@ void acquisinator_task(float ch1, float ch2, float *o1, float *o2, uint32_t *pts
     if (get_timestamp_ms() - last_send > ACQUISINATORE_AMMO_POSITION_DELAY_MS) {
         last_send = get_timestamp_ms();
         acquisinatore_send_debug_7_values(ch1 / 10.0f, ch2 / 10.0f, 0.0f);
-        // acquisinatore_send_ammo_pos(-20.0f, -20.0f, c_ammo_pos_sx, c_ammo_pos_dx);
-        // acquisinatore_send_calibration_offsets((*o1) / 10000.0f, (*o2) / 10000.0f);
-        // rear ammos
-        acquisinatore_send_calibration_offsets(c_ammo_pos_sx, c_ammo_pos_dx);
+        acquisinatore_rear_send_ammo_pos(c_ammo_pos_sx, c_ammo_pos_dx);
     }
 }
 
@@ -247,83 +245,128 @@ void acquisinator_task(float ch1, float ch2, float *o1, float *o2, uint32_t *pts
     if (get_timestamp_ms() - last_send > ACQUISINATORE_AMMO_POSITION_DELAY_MS) {
         last_send = get_timestamp_ms();
         acquisinatore_send_debug_6_values(ch1 / 10.0f, ch2 / 10.0f, 0.0f);
-        acquisinatore_send_ammo_pos(c_ammo_pos_sx, c_ammo_pos_dx, 0.0f, 0.0f);
+        acquisinatore_front_send_ammo_pos(c_ammo_pos_sx, c_ammo_pos_dx);
     }
 }
 
 #elif ACQUISINATOR_ID == ACQUISINATOR_ID_9
 
-/***
-* STRAIN GAUGES FOR REAR RIGHT WHEEL
-* 9 -> F1011
-* 10-> F36
-* 12-> F46
-* 4 -> F17
-* 13-> F58
-* 6 -> F27
-*/
-
-// F1011
 void acquisinator_task(float ch1, float ch2, float *o1, float *o2, uint32_t *pts) {
     float link_deformation                     = link_deformation_routine(ch1, ch2, o1, o2, pts);
     static uint32_t last_link_deformation_sent = 0;
     if ((get_timestamp_ms() - last_link_deformation_sent) > ACQUISINATORE_LINK_DEFORMATION_DELAY_MS) {
+        last_link_deformation_sent = get_timestamp_ms();
         acquisinatore_send_strain_gauge_val_rr_wheel(link_deformation, secondary_link_deformation_rr_wheel_rod_id_F1011);
     }
 }
 
-#elif ACQUISINATOR_ID == ACQUISINATOR_ID_10
+#elif ACQUISINATOR_ID == REAR_RIGHT_WHEEL_F36
 
-// F36
 void acquisinator_task(float ch1, float ch2, float *o1, float *o2, uint32_t *pts) {
     float link_deformation                     = link_deformation_routine(ch1, ch2, o1, o2, pts);
     static uint32_t last_link_deformation_sent = 0;
     if ((get_timestamp_ms() - last_link_deformation_sent) > ACQUISINATORE_LINK_DEFORMATION_DELAY_MS) {
+        last_link_deformation_sent = get_timestamp_ms();
         acquisinatore_send_strain_gauge_val_rr_wheel(link_deformation, secondary_link_deformation_rr_wheel_rod_id_F36);
     }
 }
 
-#elif ACQUISINATOR_ID == ACQUISINATOR_ID_12
+#elif ACQUISINATOR_ID == REAR_RIGHT_WHEEL_F46
 
-// F46
 void acquisinator_task(float ch1, float ch2, float *o1, float *o2, uint32_t *pts) {
     float link_deformation                     = link_deformation_routine(ch1, ch2, o1, o2, pts);
     static uint32_t last_link_deformation_sent = 0;
     if ((get_timestamp_ms() - last_link_deformation_sent) > ACQUISINATORE_LINK_DEFORMATION_DELAY_MS) {
+        last_link_deformation_sent = get_timestamp_ms();
         acquisinatore_send_strain_gauge_val_rr_wheel(link_deformation, secondary_link_deformation_rr_wheel_rod_id_F46);
     }
 }
 
-#elif ACQUISINATOR_ID == ACQUISINATOR_ID_4
+#elif ACQUISINATOR_ID == REAR_RIGHT_WHEEL_F17
 
-// F17
 void acquisinator_task(float ch1, float ch2, float *o1, float *o2, uint32_t *pts) {
     float link_deformation                     = link_deformation_routine(ch1, ch2, o1, o2, pts);
     static uint32_t last_link_deformation_sent = 0;
     if ((get_timestamp_ms() - last_link_deformation_sent) > ACQUISINATORE_LINK_DEFORMATION_DELAY_MS) {
+        last_link_deformation_sent = get_timestamp_ms();
         acquisinatore_send_strain_gauge_val_rr_wheel(link_deformation, secondary_link_deformation_rr_wheel_rod_id_F17);
     }
 }
 
-#elif ACQUISINATOR_ID == ACQUISINATOR_ID_13
+#elif ACQUISINATOR_ID == REAR_RIGHT_WHEEL_F58
 
-// F58
 void acquisinator_task(float ch1, float ch2, float *o1, float *o2, uint32_t *pts) {
     float link_deformation                     = link_deformation_routine(ch1, ch2, o1, o2, pts);
     static uint32_t last_link_deformation_sent = 0;
     if ((get_timestamp_ms() - last_link_deformation_sent) > ACQUISINATORE_LINK_DEFORMATION_DELAY_MS) {
+        last_link_deformation_sent = get_timestamp_ms();
         acquisinatore_send_strain_gauge_val_rr_wheel(link_deformation, secondary_link_deformation_rr_wheel_rod_id_F58);
     }
 }
 
-#elif ACQUISINATOR_ID == ACQUISINATOR_ID_6
+#elif ACQUISINATOR_ID == REAR_RIGHT_WHEEL_F27
 
-// F27
 void acquisinator_task(float ch1, float ch2, float *o1, float *o2, uint32_t *pts) {
     float link_deformation                     = link_deformation_routine(ch1, ch2, o1, o2, pts);
     static uint32_t last_link_deformation_sent = 0;
     if ((get_timestamp_ms() - last_link_deformation_sent) > ACQUISINATORE_LINK_DEFORMATION_DELAY_MS) {
+        last_link_deformation_sent = get_timestamp_ms();
         acquisinatore_send_strain_gauge_val_rr_wheel(link_deformation, secondary_link_deformation_rr_wheel_rod_id_F27);
+    }
+}
+
+#elif ACQUISINATOR_ID == REAR_LEFT_WHEEL_F36
+
+void acquisinator_task(float ch1, float ch2, float *o1, float *o2, uint32_t *pts) {
+    float link_deformation                     = link_deformation_routine(ch1, ch2, o1, o2, pts);
+    static uint32_t last_link_deformation_sent = 0;
+    if ((get_timestamp_ms() - last_link_deformation_sent) > ACQUISINATORE_LINK_DEFORMATION_DELAY_MS) {
+        last_link_deformation_sent = get_timestamp_ms();
+        acquisinatore_send_strain_gauge_val_rl_wheel(link_deformation, secondary_link_deformation_rl_wheel_rod_id_F36);
+    }
+}
+
+#elif ACQUISINATOR_ID == REAR_LEFT_WHEEL_F46
+
+void acquisinator_task(float ch1, float ch2, float *o1, float *o2, uint32_t *pts) {
+    float link_deformation                     = link_deformation_routine(ch1, ch2, o1, o2, pts);
+    static uint32_t last_link_deformation_sent = 0;
+    if ((get_timestamp_ms() - last_link_deformation_sent) > ACQUISINATORE_LINK_DEFORMATION_DELAY_MS) {
+        last_link_deformation_sent = get_timestamp_ms();
+        acquisinatore_send_strain_gauge_val_rl_wheel(link_deformation, secondary_link_deformation_rl_wheel_rod_id_F46);
+    }
+}
+
+#elif ACQUISINATOR_ID == REAR_LEFT_WHEEL_F17
+
+void acquisinator_task(float ch1, float ch2, float *o1, float *o2, uint32_t *pts) {
+    float link_deformation                     = link_deformation_routine(ch1, ch2, o1, o2, pts);
+    static uint32_t last_link_deformation_sent = 0;
+    if ((get_timestamp_ms() - last_link_deformation_sent) > ACQUISINATORE_LINK_DEFORMATION_DELAY_MS) {
+        last_link_deformation_sent = get_timestamp_ms();
+        acquisinatore_send_strain_gauge_val_rl_wheel(link_deformation, secondary_link_deformation_rl_wheel_rod_id_F17);
+    }
+}
+
+#elif ACQUISINATOR_ID == REAR_LEFT_WHEEL_F58
+
+void acquisinator_task(float ch1, float ch2, float *o1, float *o2, uint32_t *pts) {
+    float link_deformation                     = link_deformation_routine(ch1, ch2, o1, o2, pts);
+    static uint32_t last_link_deformation_sent = 0;
+    if ((get_timestamp_ms() - last_link_deformation_sent) > ACQUISINATORE_LINK_DEFORMATION_DELAY_MS) {
+        last_link_deformation_sent = get_timestamp_ms();
+        acquisinatore_send_strain_gauge_val_rl_wheel(link_deformation, secondary_link_deformation_rl_wheel_rod_id_F58);
+    }
+}
+
+#elif ACQUISINATOR_ID == REAR_LEFT_WHEEL_F27
+
+void acquisinator_task(float ch1, float ch2, float *o1, float *o2, uint32_t *pts) {
+    float link_deformation                     = link_deformation_routine(ch1, ch2, o1, o2, pts);
+    static uint32_t last_link_deformation_sent = 0;
+    if ((get_timestamp_ms() - last_link_deformation_sent) > ACQUISINATORE_LINK_DEFORMATION_DELAY_MS) {
+        last_link_deformation_sent = get_timestamp_ms();
+        acquisinatore_send_strain_gauge_val_rl_wheel(link_deformation, secondary_link_deformation_rr_wheel_rod_id_F27);
     }
 }
 
@@ -379,9 +422,9 @@ int main(void) {
 #endif
 
     acquisinatore_set_led_code(acquisinatore_led_code_all_ok);
-    uint32_t previous_timestamp               = HAL_GetTick();
-    uint32_t version_previous_timestamp       = HAL_GetTick();
-    uint32_t errors_in_can_previous_timestamp = HAL_GetTick();
+    uint32_t previous_timestamp               = get_timestamp_ms();
+    uint32_t version_previous_timestamp       = get_timestamp_ms();
+    uint32_t errors_in_can_previous_timestamp = get_timestamp_ms();
 
     float offset1, offset2 = 0.0f;
 
@@ -413,13 +456,15 @@ int main(void) {
     /* Infinite loop */
     /* USER CODE BEGIN WHILE */
     while (1) {
-        if ((HAL_GetTick() - version_previous_timestamp) > SECONDARY_ACQUISINATOR_VERSION_CYCLE_TIME_MS) {
+        if (((get_timestamp_ms() + acquisinator_id_from_flash) - version_previous_timestamp) >
+            SECONDARY_ACQUISINATOR_VERSION_CYCLE_TIME_MS) {
             acquisinatore_send_version();
-            version_previous_timestamp = HAL_GetTick();
+            version_previous_timestamp = get_timestamp_ms();
         }
-        if ((HAL_GetTick() - errors_in_can_previous_timestamp) > SECONDARY_ACQUISINATOR_ERRORS_CYCLE_TIME_MS) {
+        if (((get_timestamp_ms() + acquisinator_id_from_flash) - errors_in_can_previous_timestamp) >
+            SECONDARY_ACQUISINATOR_ERRORS_CYCLE_TIME_MS) {
             acquisinatore_send_errors();
-            errors_in_can_previous_timestamp = HAL_GetTick();
+            errors_in_can_previous_timestamp = get_timestamp_ms();
         }
         float ltc1865_channel1_value_in_V = ltc1865_read(ltc1865_SE_CH1);  // normally the channel for the ntc temperature sensor
         float ltc1865_channel2_value_in_V = ltc1865_read(ltc1865_SE_CH2);  // normally the channel for the strain gauge
@@ -476,6 +521,26 @@ void SystemClock_Config(void) {
 /* USER CODE END 4 */
 
 /**
+  * @brief  Period elapsed callback in non blocking mode
+  * @note   This function is called  when TIM7 interrupt took place, inside
+  * HAL_TIM_IRQHandler(). It makes a direct call to HAL_IncTick() to increment
+  * a global variable "uwTick" used as application time base.
+  * @param  htim : TIM handle
+  * @retval None
+  */
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
+    /* USER CODE BEGIN Callback 0 */
+
+    /* USER CODE END Callback 0 */
+    if (htim->Instance == TIM7) {
+        HAL_IncTick();
+    }
+    /* USER CODE BEGIN Callback 1 */
+
+    /* USER CODE END Callback 1 */
+}
+
+/**
   * @brief  This function is executed in case of error occurrence.
   * @retval None
   */
@@ -483,6 +548,7 @@ void Error_Handler(void) {
     /* USER CODE BEGIN Error_Handler_Debug */
     /* User can add his own implementation to report the HAL error return state */
     __disable_irq();
+    HAL_NVIC_SystemReset();
     while (1) {
     }
     /* USER CODE END Error_Handler_Debug */

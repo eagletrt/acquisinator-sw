@@ -157,9 +157,14 @@ void acquisinatore_send_errors(void) {
     CANLIB_PACK_AND_SEND(acquisinator_errors, ACQUISINATOR_ERRORS, secondary, SECONDARY);
 }
 
-void acquisinatore_send_ammo_pos(float fl, float fr, float rl, float rr) {
-    secondary_ammo_compression_converted_t converted = {.fl = fl, .fr = fr, .rl = rl, .rr = rr};
-    CANLIB_PACK_AND_SEND(ammo_compression, AMMO_COMPRESSION, secondary, SECONDARY);
+void acquisinatore_rear_send_ammo_pos(float rl, float rr) {
+    secondary_rear_ammo_compression_converted_t converted = {.rl = rl, .rr = rr};
+    CANLIB_PACK_AND_SEND(rear_ammo_compression, REAR_AMMO_COMPRESSION, secondary, SECONDARY);
+}
+
+void acquisinatore_front_send_ammo_pos(float fl, float fr) {
+    secondary_front_ammo_compression_converted_t converted = {.fl = fl, .fr = fr};
+    CANLIB_PACK_AND_SEND(front_ammo_compression, FRONT_AMMO_COMPRESSION, secondary, SECONDARY);
 }
 
 int can_routine(void) {

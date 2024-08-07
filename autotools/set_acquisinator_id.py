@@ -90,7 +90,7 @@ can-flashing ACQUISINATOR_{sys.argv[1]} ./build/acquisinator.srec'''
 set -xe
 HOST=control@192.168.1.104
 bin2srec -a 0x8004000 -i ./build/acquisinator.bin -o ./binaries/acquisinator{sys.argv[1]}.srec
-scp ./binaries/acquisinator{sys.argv[1]}.srec ${{HOST}}:/home/control/can-flashing/binaries'''
+# scp ./binaries/acquisinator{sys.argv[1]}.srec ${{HOST}}:/home/control/can-flashing/binaries'''
     try:
         outfile = open(FLASH_VIA_TLM_FILE_PATH, 'w+')
     except FileNotFoundError:

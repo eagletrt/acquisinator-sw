@@ -58,6 +58,8 @@
 /* External variables --------------------------------------------------------*/
 extern CAN_HandleTypeDef hcan;
 extern TIM_HandleTypeDef htim2;
+extern TIM_HandleTypeDef htim7;
+
 /* USER CODE BEGIN EV */
 
 /* USER CODE END EV */
@@ -83,6 +85,8 @@ void NMI_Handler(void) {
   */
 void HardFault_Handler(void) {
     /* USER CODE BEGIN HardFault_IRQn 0 */
+
+    HAL_NVIC_SystemReset();
 
     /* USER CODE END HardFault_IRQn 0 */
     while (1) {
@@ -173,7 +177,7 @@ void SysTick_Handler(void) {
     /* USER CODE BEGIN SysTick_IRQn 0 */
 
     /* USER CODE END SysTick_IRQn 0 */
-    HAL_IncTick();
+
     /* USER CODE BEGIN SysTick_IRQn 1 */
 
     /* USER CODE END SysTick_IRQn 1 */
@@ -236,6 +240,19 @@ void TIM2_IRQHandler(void) {
     /* USER CODE BEGIN TIM2_IRQn 1 */
 
     /* USER CODE END TIM2_IRQn 1 */
+}
+
+/**
+  * @brief This function handles TIM7 global and DAC2 underrun error interrupts.
+  */
+void TIM7_DAC2_IRQHandler(void) {
+    /* USER CODE BEGIN TIM7_DAC2_IRQn 0 */
+
+    /* USER CODE END TIM7_DAC2_IRQn 0 */
+    HAL_TIM_IRQHandler(&htim7);
+    /* USER CODE BEGIN TIM7_DAC2_IRQn 1 */
+
+    /* USER CODE END TIM7_DAC2_IRQn 1 */
 }
 
 /* USER CODE BEGIN 1 */

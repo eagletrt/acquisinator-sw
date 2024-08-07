@@ -60,7 +60,8 @@ void acquisinatore_send_strain_gauge_val_rl_wheel(secondary_link_deformation_rl_
 void acquisinatore_send_strain_gauge_val_rr_wheel(secondary_link_deformation_rr_wheel_rod_id rod_id, float strain_gauge_val);
 void acquisinatore_send_water_cooling_temp(double radiator_input, double radiator_output);
 void acquisinatore_send_air_cooling_temp(double air_temperature);
-void acquisinatore_send_ammo_pos(float fl, float fr, float rl, float rr);
+void acquisinatore_rear_send_ammo_pos(float rl, float rr);
+void acquisinatore_front_send_ammo_pos(float fl, float fr);
 
 /* USER CODE END Prototypes */
 

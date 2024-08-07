@@ -7,14 +7,14 @@ void acquisinator_task(float ch1, float ch2, float *o1, float *o2, uint32_t *pts
     if (link_deformation_calibration_check(ch2, o1, o2) != HAL_OK) {
         acquisinatore_set_led_code(acquisinatore_led_code_read_write_flash);
     }
-    if ((HAL_GetTick() - calibration_values_last_send) > SECONDARY_ACQUISINATOR_CALIBRATIONS_OFFSETS_CYCLE_TIME_MS) {
-        calibration_values_last_send = HAL_GetTick();
+    if ((get_timestamp_ms() - calibration_values_last_send) > SECONDARY_ACQUISINATOR_CALIBRATIONS_OFFSETS_CYCLE_TIME_MS) {
+        calibration_values_last_send = get_timestamp_ms();
         acquisinatore_send_calibration_offsets(*o1, *o2);
     }
 
     // CAN SEND
-    if ((HAL_GetTick() - *pts) > NTC_COOLING_DELAY_MS) {
-        *pts = HAL_GetTick();
+    if ((get_timestamp_ms() - *pts) > NTC_COOLING_DELAY_MS) {
+        *pts = get_timestamp_ms();
         acquisinatore_send_air_cooling_temp(top_left_ntc_temperature);
     }
     acquisinatore_send_strain_gauge_val_rr_wheel(0, link_deformation);
@@ -26,14 +26,14 @@ void acquisinator_task(float ch1, float ch2, float *o1, float *o2, uint32_t *pts
     // bottom_right_ntc_temperature => entrance of the radiators (but please check every time)
     float bottom_right_ntc_temperature = acquisinatore_ntc_from_V_to_degrees_celsius(((ch2 - 0.8f) / 2.0f) + *o2);
 
-    if ((HAL_GetTick() - calibration_values_last_send) > SECONDARY_ACQUISINATOR_CALIBRATIONS_OFFSETS_CYCLE_TIME_MS) {
-        calibration_values_last_send = HAL_GetTick();
+    if ((get_timestamp_ms() - calibration_values_last_send) > SECONDARY_ACQUISINATOR_CALIBRATIONS_OFFSETS_CYCLE_TIME_MS) {
+        calibration_values_last_send = get_timestamp_ms();
         acquisinatore_send_calibration_offsets(*o1, *o2);
     }
 
-    if ((HAL_GetTick() - *pts) > NTC_COOLING_DELAY_MS) {
+    if ((get_timestamp_ms() - *pts) > NTC_COOLING_DELAY_MS) {
         acquisinatore_send_water_cooling_temp(bottom_right_ntc_temperature, top_right_ntc_temperature);
-        *pts = HAL_GetTick();
+        *pts = get_timestamp_ms();
     }
 }
 #elif ACQUISINATOR_ID == ACQUISINATOR_ID_2
@@ -43,8 +43,8 @@ void acquisinator_task(float ch1, float ch2, float *o1, float *o2, uint32_t *pts
     if (link_deformation_calibration_check(ch2, o1, o2) != HAL_OK) {
         acquisinatore_set_led_code(acquisinatore_led_code_read_write_flash);
     }
-    if ((HAL_GetTick() - calibration_values_last_send) > SECONDARY_ACQUISINATOR_CALIBRATIONS_OFFSETS_CYCLE_TIME_MS) {
-        calibration_values_last_send = HAL_GetTick();
+    if ((get_timestamp_ms() - calibration_values_last_send) > SECONDARY_ACQUISINATOR_CALIBRATIONS_OFFSETS_CYCLE_TIME_MS) {
+        calibration_values_last_send = get_timestamp_ms();
         acquisinatore_send_calibration_offsets(*o1, *o2);
     }
     acquisinatore_send_strain_gauge_val_fl_wheel(0, link_deformation);
@@ -56,8 +56,8 @@ void acquisinator_task(float ch1, float ch2, float *o1, float *o2, uint32_t *pts
     if (link_deformation_calibration_check(ch2, o1, o2) != HAL_OK) {
         acquisinatore_set_led_code(acquisinatore_led_code_read_write_flash);
     }
-    if ((HAL_GetTick() - calibration_values_last_send) > SECONDARY_ACQUISINATOR_CALIBRATIONS_OFFSETS_CYCLE_TIME_MS) {
-        calibration_values_last_send = HAL_GetTick();
+    if ((get_timestamp_ms() - calibration_values_last_send) > SECONDARY_ACQUISINATOR_CALIBRATIONS_OFFSETS_CYCLE_TIME_MS) {
+        calibration_values_last_send = get_timestamp_ms();
         acquisinatore_send_calibration_offsets(*o1, *o2);
     }
     acquisinatore_send_strain_gauge_val_fr_wheel(0, link_deformation);
@@ -69,8 +69,8 @@ void acquisinator_task(float ch1, float ch2, float *o1, float *o2, uint32_t *pts
     if (link_deformation_calibration_check(ch2, o1, o2) != HAL_OK) {
         acquisinatore_set_led_code(acquisinatore_led_code_read_write_flash);
     }
-    if ((HAL_GetTick() - calibration_values_last_send) > SECONDARY_ACQUISINATOR_CALIBRATIONS_OFFSETS_CYCLE_TIME_MS) {
-        calibration_values_last_send = HAL_GetTick();
+    if ((get_timestamp_ms() - calibration_values_last_send) > SECONDARY_ACQUISINATOR_CALIBRATIONS_OFFSETS_CYCLE_TIME_MS) {
+        calibration_values_last_send = get_timestamp_ms();
         acquisinatore_send_calibration_offsets(*o1, *o2);
     }
     acquisinatore_send_strain_gauge_val_rl_wheel(0, link_deformation);
