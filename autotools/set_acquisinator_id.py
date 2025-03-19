@@ -2,9 +2,7 @@
 
 import sys
 
-ID_HEADER_FILE_PATH="Core/Inc/acquisinator_id.h"
-FLASH_VIA_CAN_FILE_PATH="autotools/flash_via_can.sh"
-FLASH_VIA_TLM_FILE_PATH="autotools/flash_via_tlm.sh"
+ID_HEADER_FILE_PATH="./Core/Inc/acquisinator_id.h"
 
 
 if __name__ == "__main__":
@@ -69,34 +67,5 @@ if __name__ == "__main__":
     else:
         print("failed to write to file", ID_HEADER_FILE_PATH)
     outfile.close()
-
-    # Flashing via can script generation
-    FLASH_VIA_CAN = f'''#! /bin/env bash
-bin2srec -a 0x8004000 -i ./build/acquisinator.bin -o ./build/acquisinator.srec
-can-flashing ACQUISINATOR_{sys.argv[1]} ./build/acquisinator.srec'''
-    try:
-        outfile = open(FLASH_VIA_CAN_FILE_PATH, 'w+')
-    except FileNotFoundError:
-        print("File not found", FLASH_VIA_CAN_FILE_PATH)
-    if outfile.write(FLASH_VIA_CAN) > 0:
-        print("successfully written header " + FLASH_VIA_CAN_FILE_PATH)
-    else:
-        print("failed to write to file", FLASH_VIA_CAN_FILE_PATH)
-    outfile.close()
     
 
-    # Flashing via can script generation
-    FLASH_VIA_TLM = f'''#! /bin/env bash
-set -xe
-HOST=control@192.168.1.104
-bin2srec -a 0x8004000 -i ./build/acquisinator.bin -o ./binaries/acquisinator{sys.argv[1]}.srec
-# scp ./binaries/acquisinator{sys.argv[1]}.srec ${{HOST}}:/home/control/can-flashing/binaries'''
-    try:
-        outfile = open(FLASH_VIA_TLM_FILE_PATH, 'w+')
-    except FileNotFoundError:
-        print("File not found", FLASH_VIA_TLM_FILE_PATH)
-    if outfile.write(FLASH_VIA_TLM) > 0:
-        print("successfully written " + FLASH_VIA_TLM_FILE_PATH)
-    else:
-        print("failed to write to file", FLASH_VIA_TLM_FILE_PATH)
-    outfile.close()
