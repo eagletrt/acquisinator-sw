@@ -53,3 +53,4 @@ float ltc1865_read(ltc1865_channel_t channel);
 #endif
 
 #endif /* __SPI_H__ */
+

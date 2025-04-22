@@ -70,3 +70,4 @@ void acquisinatore_front_send_ammo_pos(float fl, float fr);
 #endif
 
 #endif /* __CAN_H__ */
+
