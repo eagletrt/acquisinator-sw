@@ -203,7 +203,7 @@ float link_deformation_routine(float ch1, float ch2, float *o1, float *o2, uint3
     return link_deformation;
 }
 
-#if ACQUISINATOR_ID == ACQUISINATOR_ID_8
+#if ACQUISINATOR_ID == ACQUISINATOR_ID_5
 
 // rear ammos
 void acquisinator_task(float ch1, float ch2, float *o1, float *o2, uint32_t *pts) {
@@ -226,7 +226,7 @@ void acquisinator_task(float ch1, float ch2, float *o1, float *o2, uint32_t *pts
     }
 }
 
-#elif ACQUISINATOR_ID == ACQUISINATOR_ID_1
+#elif ACQUISINATOR_ID == ACQUISINATOR_ID_8
 
 // front ammos
 void acquisinator_task(float ch1, float ch2, float *o1, float *o2, uint32_t *pts) {
