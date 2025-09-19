@@ -26,7 +26,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "acquisinator_id.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -53,7 +53,7 @@
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 /* USER CODE BEGIN PFP */
-
+static void VectorBase_Config(void);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -69,7 +69,7 @@ int main(void)
 {
 
   /* USER CODE BEGIN 1 */
-
+  VectorBase_Config();
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -156,7 +156,16 @@ void SystemClock_Config(void)
 }
 
 /* USER CODE BEGIN 4 */
-
+static void VectorBase_Config(void)
+{
+  /* The constant array with vectors of the vector table is declared externally in the
+   * c-startup code.
+   */
+  extern const unsigned long g_pfnVectors[];
+ 
+  /* Remap the vector table to where the vector table is located for this program. */
+  SCB->VTOR = (unsigned long)&g_pfnVectors[0];
+}
 /* USER CODE END 4 */
 
 /**

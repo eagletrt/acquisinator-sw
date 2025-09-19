@@ -61,12 +61,6 @@ void Error_Handler(void);
 #define OSC_IN_GPIO_Port GPIOF
 #define OSC_OUT_Pin GPIO_PIN_1
 #define OSC_OUT_GPIO_Port GPIOF
-#define SCK_Pin GPIO_PIN_5
-#define SCK_GPIO_Port GPIOA
-#define SDO_Pin GPIO_PIN_6
-#define SDO_GPIO_Port GPIOA
-#define SDI_Pin GPIO_PIN_7
-#define SDI_GPIO_Port GPIOA
 #define USER_LED_Pin GPIO_PIN_10
 #define USER_LED_GPIO_Port GPIOA
 #define SWDIO_Pin GPIO_PIN_13
