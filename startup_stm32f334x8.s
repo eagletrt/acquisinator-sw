@@ -229,6 +229,7 @@ g_pfnVectors:
 	.word	0
 	.word	0
 	.word	FPU_IRQHandler
+	.word 0xFFFFFFFF   // Reserved for OpenBLT checksum
 
 /*******************************************************************************
 *
@@ -414,4 +415,5 @@ g_pfnVectors:
 	
 	.weak	FPU_IRQHandler
 	.thumb_set FPU_IRQHandler,Default_Handler
+
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
