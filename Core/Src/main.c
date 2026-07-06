@@ -19,19 +19,24 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "adc.h"
+#include "blinky.h"
 #include "can.h"
 #include "dac.h"
 #include "spi.h"
+#include "stm32f3xx_hal.h"
+#include "stm32f3xx_hal_gpio.h"
 #include "tim.h"
 #include "usart.h"
 #include "gpio.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include <stdint.h>
 #include <stdio.h>
 #include "lockin-api.h"
 #include "sine-lut-api.h"
 #include "usart.h"
+#include <blinky-api.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -51,6 +56,8 @@
 #define ADC_FULL_SCALE 4095.0f
 #define VCC 3.3f
 #define REF_AMPLITUDE (VCC / 2.0f)
+
+#define BLINKY_PATTERN_SIZE (2U)
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -64,7 +71,10 @@
 static uint16_t sine_buf[SAMPLES];
 static struct SineLUT sine_lut;
 static struct LockInHandler lockin;
-static uint32_t print_tick = 0;
+static struct Blinky blinker;
+
+static uint16_t pattern[BLINKY_PATTERN_SIZE] = { 500, 500 };
+static uint32_t last_print = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -117,6 +127,7 @@ int main(void) {
     HAL_DAC_Start(&hdac1, DAC_CHANNEL_1);
     HAL_TIM_Base_Start_IT(&htim2);
     lockin_api_init(&lockin, REF_FREQ, LPF_CUTOFF, SAMPLING_FREQ, REF_AMPLITUDE);
+    blinky_api_init(&blinker, pattern, BLINKY_PATTERN_SIZE, true, BLINKY_LOW);
 
     /* USER CODE END 2 */
 
@@ -135,16 +146,16 @@ int main(void) {
         // Feed the lock-in amplifier with the new samples
         float v_out = lockin_api_update(&lockin, signal, reference);
 
-        if (++print_tick >= 100) {
-            print_tick = 0;
+        if (HAL_GetTick() - last_print >= 1000) {
+            last_print = HAL_GetTick();
 
-            HAL_GPIO_TogglePin(USER_LED_GPIO_Port, USER_LED_Pin);
             char out[64];
             int len = snprintf(out, sizeof(out), "Tensione in uscita: %f V\r\n", v_out);
             HAL_UART_Transmit(&huart2, (uint8_t *)out, len, HAL_MAX_DELAY);
         }
 
-        HAL_Delay(1);
+        enum BlinkyState led_status = blinky_api_routine(&blinker, HAL_GetTick());
+        HAL_GPIO_WritePin(USER_LED_GPIO_Port, USER_LED_Pin, (GPIO_PinState)led_status);
         /* USER CODE END WHILE */
 
         /* USER CODE BEGIN 3 */
