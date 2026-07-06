@@ -21,16 +21,17 @@
 #include "adc.h"
 #include "can.h"
 #include "dac.h"
-#include "lockin-api.h"
 #include "spi.h"
-#include "stm32f3xx_hal_dac.h"
-#include "stm32f3xx_hal_dac_ex.h"
 #include "tim.h"
+#include "usart.h"
 #include "gpio.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include <stdio.h>
+#include "lockin-api.h"
+#include "sine-lut-api.h"
+#include "usart.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -42,16 +43,7 @@
 /* USER CODE BEGIN PD */
 #define SAMPLES 256
 #define DAC_MAX 4095
-/* USER CODE END PD */
 
-/* Private macro -------------------------------------------------------------*/
-/* USER CODE BEGIN PM */
-#include <stdio.h>
-#include "lockin.h"
-#include "sine-lut-api.h"
-/* USER CODE END PM */
-
-/* Private variables ---------------------------------------------------------*/
 #define SAMPLING_FREQ 500.0f
 #define REF_FREQ 500.0f
 #define LPF_CUTOFF 5.0f
@@ -59,13 +51,20 @@
 #define ADC_FULL_SCALE 4095.0f
 #define VCC 3.3f
 #define REF_AMPLITUDE (VCC / 2.0f)
+/* USER CODE END PD */
 
-static uint32_t print_tick = 0;
-static struct LockInHandler lockin;
+/* Private macro -------------------------------------------------------------*/
+/* USER CODE BEGIN PM */
+
+/* USER CODE END PM */
+
+/* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
 static uint16_t sine_buf[SAMPLES];
 static struct SineLUT sine_lut;
+static struct LockInHandler lockin;
+static uint32_t print_tick = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -112,6 +111,7 @@ int main(void) {
     MX_ADC1_Init();
     MX_TIM2_Init();
     MX_DAC1_Init();
+    MX_USART2_UART_Init();
     /* USER CODE BEGIN 2 */
     sine_lut_api_init(&sine_lut, sine_buf, SAMPLES, DAC_MAX);
     HAL_DAC_Start(&hdac1, DAC_CHANNEL_1);
@@ -123,7 +123,6 @@ int main(void) {
     /* Infinite loop */
     /* USER CODE BEGIN WHILE */
     while (1) {
-        /* USER CODE END WHILE */
         float signal, reference;
 
         // Read adc1 from resistor
@@ -139,13 +138,15 @@ int main(void) {
         if (++print_tick >= 100) {
             print_tick = 0;
 
-            HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_8);
-            printf("Tensione in uscita: %f V\r\n", v_out);
-
-            printf("-----------------------------------\r\n");
+            HAL_GPIO_TogglePin(USER_LED_GPIO_Port, USER_LED_Pin);
+            char out[64];
+            int len = snprintf(out, sizeof(out), "Tensione in uscita: %f V\r\n", v_out);
+            HAL_UART_Transmit(&huart2, (uint8_t *)out, len, HAL_MAX_DELAY);
         }
 
         HAL_Delay(1);
+        /* USER CODE END WHILE */
+
         /* USER CODE BEGIN 3 */
     }
     /* USER CODE END 3 */
