@@ -5,18 +5,18 @@
 #include <math.h>
 
 void demod_api_init(struct DemodHandler *hdemod, float ref_freq, float lpf_cutoff, float sampling_freq) {
-    float t = tanf((float)M_PI * ref_freq / sampling_freq);
-    hdemod->allpass_coeff = (1.0f - t) / (1.0f + t);
-    hdemod->allpass_x_prev = 0.0f;
-    hdemod->allpass_y_prev = 0.0f;
+    float tan_val = tanf((float)M_PI * ref_freq / sampling_freq);
+    hdemod->allpass_coeff = (1.0F - tan_val) / (1.0F + tan_val);
+    hdemod->allpass_x_prev = 0.0F;
+    hdemod->allpass_y_prev = 0.0F;
 
     lpf_api_init(&hdemod->lpf_i, lpf_cutoff, sampling_freq);
     lpf_api_init(&hdemod->lpf_q, lpf_cutoff, sampling_freq);
 
-    hdemod->i = 0.0f;
-    hdemod->q = 0.0f;
-    hdemod->amplitude = 0.0f;
-    hdemod->phase = 0.0f;
+    hdemod->i = 0.0F;
+    hdemod->q = 0.0F;
+    hdemod->amplitude = 0.0F;
+    hdemod->phase = 0.0F;
 }
 
 void demod_api_update(struct DemodHandler *hdemod, float signal, float reference) {
@@ -33,14 +33,14 @@ void demod_api_update(struct DemodHandler *hdemod, float signal, float reference
 }
 
 void demod_api_reset(struct DemodHandler *hdemod) {
-    hdemod->allpass_x_prev = 0.0f;
-    hdemod->allpass_y_prev = 0.0f;
+    hdemod->allpass_x_prev = 0.0F;
+    hdemod->allpass_y_prev = 0.0F;
 
     lpf_api_reset(&hdemod->lpf_i);
     lpf_api_reset(&hdemod->lpf_q);
 
-    hdemod->i = 0.0f;
-    hdemod->q = 0.0f;
-    hdemod->amplitude = 0.0f;
-    hdemod->phase = 0.0f;
+    hdemod->i = 0.0F;
+    hdemod->q = 0.0F;
+    hdemod->amplitude = 0.0F;
+    hdemod->phase = 0.0F;
 }

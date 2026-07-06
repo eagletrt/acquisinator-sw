@@ -5,9 +5,9 @@ void lockin_api_init(struct LockInHandler *hlockin, float ref_freq, float lpf_cu
     demod_api_init(&hlockin->demod, ref_freq, lpf_cutoff, sampling_freq);
 
     hlockin->ref_amplitude = ref_amplitude;
-    hlockin->amplitude = 0.0f;
-    hlockin->phase = 0.0f;
-    hlockin->output = 0.0f;
+    hlockin->amplitude = 0.0F;
+    hlockin->phase = 0.0F;
+    hlockin->output = 0.0F;
 }
 
 float lockin_api_update(struct LockInHandler *hlockin, float signal, float reference) {
@@ -17,8 +17,8 @@ float lockin_api_update(struct LockInHandler *hlockin, float signal, float refer
     hlockin->phase = hlockin->demod.phase;
 
     // H = Y / (A^2 + offset), where A is the reference amplitude
-    float a = hlockin->ref_amplitude;
-    hlockin->output = hlockin->amplitude / (a * a + LOCKIN_OFFSET);
+    float ref_amp = hlockin->ref_amplitude;
+    hlockin->output = hlockin->amplitude / (ref_amp * ref_amp + LOCKIN_OFFSET);
 
     return hlockin->output;
 }
@@ -26,7 +26,7 @@ float lockin_api_update(struct LockInHandler *hlockin, float signal, float refer
 void lockin_api_reset(struct LockInHandler *hlockin) {
     demod_api_reset(&hlockin->demod);
 
-    hlockin->amplitude = 0.0f;
-    hlockin->phase = 0.0f;
-    hlockin->output = 0.0f;
+    hlockin->amplitude = 0.0F;
+    hlockin->phase = 0.0F;
+    hlockin->output = 0.0F;
 }
