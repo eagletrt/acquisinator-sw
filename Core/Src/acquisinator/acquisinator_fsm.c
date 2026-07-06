@@ -19,25 +19,25 @@ The finite state machine has:
 
 // GLOBALS
 // State human-readable names
-const char *state_names[] = {"init", "idle", "fatal", "flash", "calibration"};
+const char *state_names[] = { "init", "idle", "fatal", "flash", "calibration" };
 
 // List of state functions
 state_func_t *const state_table[NUM_STATES] = {
-  do_init,        // in state init
-  do_idle,        // in state idle
-  do_fatal,       // in state fatal
-  do_flash,       // in state flash
-  do_calibration, // in state calibration
+    do_init,        // in state init
+    do_idle,        // in state idle
+    do_fatal,       // in state fatal
+    do_flash,       // in state flash
+    do_calibration, // in state calibration
 };
 
 // Table of transition functions
 transition_func_t *const transition_table[NUM_STATES][NUM_STATES] = {
-  /* states:         init               , idle               , fatal              , flash              , calibration         */
-  /* init        */ {NULL               , init_to_idle       , to_fatal           , NULL               , NULL               }, 
-  /* idle        */ {NULL               , stay               , to_fatal           , idle_to_flash      , idle_to_calibration}, 
-  /* fatal       */ {NULL               , NULL               , stay               , NULL               , NULL               }, 
-  /* flash       */ {NULL               , flash_to_idle      , to_fatal           , stay               , NULL               }, 
-  /* calibration */ {NULL               , calibration_to_idle, to_fatal           , NULL               , stay               }, 
+    /* states:         init               , idle               , fatal              , flash              , calibration         */
+    /* init        */ { NULL, init_to_idle, to_fatal, NULL, NULL },
+    /* idle        */ { NULL, stay, to_fatal, idle_to_flash, idle_to_calibration },
+    /* fatal       */ { NULL, NULL, stay, NULL, NULL },
+    /* flash       */ { NULL, flash_to_idle, to_fatal, stay, NULL },
+    /* calibration */ { NULL, calibration_to_idle, to_fatal, NULL, stay },
 };
 
 /*  ____  _        _       
@@ -51,105 +51,99 @@ transition_func_t *const transition_table[NUM_STATES][NUM_STATES] = {
  * | |_| | | | '_ \ / __| __| |/ _ \| '_ \/ __|
  * |  _| |_| | | | | (__| |_| | (_) | | | \__ \
  * |_|  \__,_|_| |_|\___|\__|_|\___/|_| |_|___/
- */                                             
+ */
 
 // Function to be executed in state init
 // valid return states: STATE_IDLE, STATE_FATAL
 state_t do_init(state_data_t *data) {
-  state_t next_state = STATE_IDLE;
-  /* Your Code Here */
-  
-  switch (next_state) {
-  case STATE_IDLE:
-  case STATE_FATAL:
-    break;
-  default:
-    next_state = NO_CHANGE;
-  }
+    state_t next_state = STATE_IDLE;
+    /* Your Code Here */
 
-  return next_state;
+    switch (next_state) {
+        case STATE_IDLE:
+        case STATE_FATAL:
+            break;
+        default:
+            next_state = NO_CHANGE;
+    }
+
+    return next_state;
 }
-
 
 // Function to be executed in state idle
 // valid return states: NO_CHANGE, STATE_IDLE, STATE_FATAL, STATE_FLASH, STATE_CALIBRATION
 state_t do_idle(state_data_t *data) {
-  state_t next_state = NO_CHANGE;
-  /* Your Code Here */
-  
-  switch (next_state) {
-  case NO_CHANGE:
-  case STATE_IDLE:
-  case STATE_FATAL:
-  case STATE_FLASH:
-  case STATE_CALIBRATION:
-    break;
-  default:
-    next_state = NO_CHANGE;
-  }
+    state_t next_state = NO_CHANGE;
+    /* Your Code Here */
 
-  return next_state;
+    switch (next_state) {
+        case NO_CHANGE:
+        case STATE_IDLE:
+        case STATE_FATAL:
+        case STATE_FLASH:
+        case STATE_CALIBRATION:
+            break;
+        default:
+            next_state = NO_CHANGE;
+    }
+
+    return next_state;
 }
-
 
 // Function to be executed in state fatal
 // valid return states: NO_CHANGE, STATE_FATAL
 state_t do_fatal(state_data_t *data) {
-  state_t next_state = NO_CHANGE;
-  /* Your Code Here */
-  
-  switch (next_state) {
-  case NO_CHANGE:
-  case STATE_FATAL:
-    break;
-  default:
-    next_state = NO_CHANGE;
-  }
+    state_t next_state = NO_CHANGE;
+    /* Your Code Here */
 
-  return next_state;
+    switch (next_state) {
+        case NO_CHANGE:
+        case STATE_FATAL:
+            break;
+        default:
+            next_state = NO_CHANGE;
+    }
+
+    return next_state;
 }
-
 
 // Function to be executed in state flash
 // valid return states: NO_CHANGE, STATE_IDLE, STATE_FATAL, STATE_FLASH
 state_t do_flash(state_data_t *data) {
-  state_t next_state = NO_CHANGE;
-  /* Your Code Here */
-  
-  switch (next_state) {
-  case NO_CHANGE:
-  case STATE_IDLE:
-  case STATE_FATAL:
-  case STATE_FLASH:
-    break;
-  default:
-    next_state = NO_CHANGE;
-  }
+    state_t next_state = NO_CHANGE;
+    /* Your Code Here */
 
-  return next_state;
+    switch (next_state) {
+        case NO_CHANGE:
+        case STATE_IDLE:
+        case STATE_FATAL:
+        case STATE_FLASH:
+            break;
+        default:
+            next_state = NO_CHANGE;
+    }
+
+    return next_state;
 }
-
 
 // Function to be executed in state calibration
 // valid return states: NO_CHANGE, STATE_IDLE, STATE_FATAL, STATE_CALIBRATION
 state_t do_calibration(state_data_t *data) {
-  state_t next_state = NO_CHANGE;
-  /* Your Code Here */
-  
-  switch (next_state) {
-  case NO_CHANGE:
-  case STATE_IDLE:
-  case STATE_FATAL:
-  case STATE_CALIBRATION:
-    break;
-  default:
-    next_state = NO_CHANGE;
-  }
+    state_t next_state = NO_CHANGE;
+    /* Your Code Here */
 
-  return next_state;
+    switch (next_state) {
+        case NO_CHANGE:
+        case STATE_IDLE:
+        case STATE_FATAL:
+        case STATE_CALIBRATION:
+            break;
+        default:
+            next_state = NO_CHANGE;
+    }
+
+    return next_state;
 }
-
-
 
 /*  _____                    _ _   _              
  * |_   _| __ __ _ _ __  ___(_) |_(_) ___  _ __   
@@ -162,12 +156,12 @@ state_t do_calibration(state_data_t *data) {
  * | |_| | | | '_ \ / __| __| |/ _ \| '_ \/ __|
  * |  _| |_| | | | | (__| |_| | (_) | | | \__ \
  * |_|  \__,_|_| |_|\___|\__|_|\___/|_| |_|___/
- */    
-                                          
+ */
+
 // This function is called in 1 transition:
 // 1. from init to idle
 void init_to_idle(state_data_t *data) {
-  /* Your Code Here */
+    /* Your Code Here */
 }
 
 // This function is called in 4 transitions:
@@ -176,7 +170,7 @@ void init_to_idle(state_data_t *data) {
 // 3. from flash to fatal
 // 4. from calibration to fatal
 void to_fatal(state_data_t *data) {
-  /* Your Code Here */
+    /* Your Code Here */
 }
 
 // This function is called in 4 transitions:
@@ -185,33 +179,32 @@ void to_fatal(state_data_t *data) {
 // 3. from flash to flash
 // 4. from calibration to calibration
 void stay(state_data_t *data) {
-  /* Your Code Here */
+    /* Your Code Here */
 }
 
 // This function is called in 1 transition:
 // 1. from idle to flash
 void idle_to_flash(state_data_t *data) {
-  /* Your Code Here */
+    /* Your Code Here */
 }
 
 // This function is called in 1 transition:
 // 1. from idle to calibration
 void idle_to_calibration(state_data_t *data) {
-  /* Your Code Here */
+    /* Your Code Here */
 }
 
 // This function is called in 1 transition:
 // 1. from flash to idle
 void flash_to_idle(state_data_t *data) {
-  /* Your Code Here */
+    /* Your Code Here */
 }
 
 // This function is called in 1 transition:
 // 1. from calibration to idle
 void calibration_to_idle(state_data_t *data) {
-  /* Your Code Here */
+    /* Your Code Here */
 }
-
 
 /*  ____  _        _        
  * / ___|| |_ __ _| |_ ___  
@@ -228,30 +221,28 @@ void calibration_to_idle(state_data_t *data) {
  */
 
 state_t run_state(state_t cur_state, state_data_t *data) {
-  state_t new_state = state_table[cur_state](data);
-  if (new_state == NO_CHANGE) new_state = cur_state;
+    state_t new_state = state_table[cur_state](data);
+    if (new_state == NO_CHANGE)
+        new_state = cur_state;
 
-  transition_func_t *transition = transition_table[cur_state][new_state];
-  if (transition)
-    transition(data);
+    transition_func_t *transition = transition_table[cur_state][new_state];
+    if (transition)
+        transition(data);
 
-  return new_state;
+    return new_state;
 }
-
-
 
 #ifdef TEST_MAIN
 #include <unistd.h>
 int main() {
-  state_t cur_state = STATE_INIT;
+    state_t cur_state = STATE_INIT;
 
-  do {
-    cur_state = run_state(cur_state, NULL);
-    sleep(1);
+    do {
+        cur_state = run_state(cur_state, NULL);
+        sleep(1);
 
-  } while (1);
+    } while (1);
 
-  return 0;
+    return 0;
 }
 #endif
-

@@ -13,7 +13,6 @@ The finite state machine has:
 
 ******************************************************************************/
 
-
 #ifndef ACQUISINATOR_FSM_H
 #define ACQUISINATOR_FSM_H
 #ifdef __cplusplus
@@ -30,13 +29,13 @@ typedef void state_data_t;
 
 // List of states
 typedef enum {
-  STATE_INIT = 0,  
-  STATE_IDLE,  
-  STATE_FATAL,  
-  STATE_FLASH,  
-  STATE_CALIBRATION,  
-  NUM_STATES,
-  NO_CHANGE
+    STATE_INIT = 0,
+    STATE_IDLE,
+    STATE_FATAL,
+    STATE_FLASH,
+    STATE_CALIBRATION,
+    NUM_STATES,
+    NO_CHANGE
 } state_t;
 
 // State human-readable names
@@ -63,10 +62,8 @@ state_t do_flash(state_data_t *data);
 // valid return states: NO_CHANGE, STATE_IDLE, STATE_FATAL, STATE_CALIBRATION
 state_t do_calibration(state_data_t *data);
 
-
 // List of state functions
 extern state_func_t *const state_table[NUM_STATES];
-
 
 // Transition functions
 void init_to_idle(state_data_t *data);
