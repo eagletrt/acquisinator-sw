@@ -30,11 +30,7 @@ jobs:
         run: pip install --upgrade platformio
 
       - name: Build
-        run: pio run -e acquisinator-1 &&
-          pio run -e acquisinator-2 &&
-          pio run -e acquisinator-3 &&
-          pio run -e acquisinator-4 &&
-          cd acquisinator-sw-bootloader && pio run
+        run: pio run -e native
 
       - name: Static Code Analysis
         if: github.ref == 'refs/heads/dev'

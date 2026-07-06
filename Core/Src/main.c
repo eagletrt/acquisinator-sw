@@ -46,9 +46,9 @@
 
 /* Private macro -------------------------------------------------------------*/
 /* USER CODE BEGIN PM */
-#include <math.h>
 #include <stdio.h>
 #include "lockin.h"
+#include "sine-lut-api.h"
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
@@ -64,28 +64,18 @@ static uint32_t print_tick = 0;
 static struct LockInHandler lockin;
 
 /* USER CODE BEGIN PV */
-static uint16_t sine_lut[SAMPLES];
-static volatile uint32_t sine_idx = 0;
+static uint16_t sine_buf[SAMPLES];
+static struct SineLUT sine_lut;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 /* USER CODE BEGIN PFP */
 static void VectorBase_Config(void);
-static void Sine_LUT_Init(void);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-
-/* Fill the DAC sine LUT: sine_lut[i] = 2047.5 * (1 + sin(2*pi*i/SAMPLES)),
- * centered at mid-scale with full 12-bit peak-to-peak amplitude. */
-static void Sine_LUT_Init(void) {
-    for (uint32_t i = 0; i < SAMPLES; i++) {
-        float s = sinf(2.0f * (float)M_PI * (float)i / (float)SAMPLES);
-        sine_lut[i] = (uint16_t)((DAC_MAX / 2.0f) * (1.0f + s) + 0.5f);
-    }
-}
 
 /* USER CODE END 0 */
 
@@ -123,7 +113,7 @@ int main(void) {
     MX_TIM2_Init();
     MX_DAC1_Init();
     /* USER CODE BEGIN 2 */
-    Sine_LUT_Init();
+    sine_lut_api_init(&sine_lut, sine_buf, SAMPLES, DAC_MAX);
     HAL_DAC_Start(&hdac1, DAC_CHANNEL_1);
     HAL_TIM_Base_Start_IT(&htim2);
     lockin_api_init(&lockin, REF_FREQ, LPF_CUTOFF, SAMPLING_FREQ, REF_AMPLITUDE);
@@ -205,8 +195,7 @@ void SystemClock_Config(void) {
 /* USER CODE BEGIN 4 */
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
     if (htim->Instance == TIM2) {
-        HAL_DAC_SetValue(&hdac1, DAC_CHANNEL_1, DAC_ALIGN_12B_R, (sine_lut[sine_idx] / 1.414f) + 600.0f);
-        sine_idx = (sine_idx + 1) % SAMPLES;
+        HAL_DAC_SetValue(&hdac1, DAC_CHANNEL_1, DAC_ALIGN_12B_R, (sine_lut_api_next(&sine_lut) / 1.414f) + 600.0f);
     }
 }
 
