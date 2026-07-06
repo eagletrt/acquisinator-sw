@@ -1,12 +1,12 @@
 /************************************************************************************//**
-* \file         Source/can.h
-* \brief        Bootloader CAN communication interface header file.
+* \file         Source/infotable.h
+* \brief        Info table check feature header file.
 * \ingroup      Core
 * \internal
 *----------------------------------------------------------------------------------------
 *                          C O P Y R I G H T
 *----------------------------------------------------------------------------------------
-*   Copyright (c) 2016  by Feaser    http://www.feaser.com    All rights reserved
+*   Copyright (c) 2025  by Feaser    http://www.feaser.com    All rights reserved
 *
 *----------------------------------------------------------------------------------------
 *                            L I C E N S E
@@ -25,18 +25,35 @@
 *
 * \endinternal
 ****************************************************************************************/
-#ifndef CAN_H
-#define CAN_H
+#ifndef INFOTABLE_H
+#define INFOTABLE_H
 
-#if (BOOT_COM_CAN_ENABLE > 0)
+#if (BOOT_INFO_TABLE_ENABLE > 0)
+/****************************************************************************************
+* Type definitions
+****************************************************************************************/
+/** \brief Enumeration for the info tables. */
+typedef enum
+{
+  INFO_TABLE_ID_INTERNAL_RAM,  /**< Internal RAM buffer for to-be-programmed firmware. */
+  INFO_TABLE_ID_FIRMWARE_NVM   /**< Currently programmed firmware in non-volatile mem. */
+} tInfoTableId;
+
+
 /****************************************************************************************
 * Function prototypes
 ****************************************************************************************/
-void     CanInit(void);
-void     CanTransmitPacket(blt_int8u *data, blt_int8u len);
-blt_bool CanReceivePacket(blt_int8u *data, blt_int8u *len);
-#endif /* BOOT_COM_CAN_ENABLE > 0 */
+void       InfoTableInit(void);
+blt_bool   InfoTableCheck(void);
+blt_addr   InfoTableGetPtr(tInfoTableId infoTableId);
+void       InfoTableClear(tInfoTableId infoTableId);
+blt_int16u InfoTableCurrentSize(tInfoTableId infoTableId);
+blt_bool   InfoTableAddData(tInfoTableId infoTableId, blt_int8u const * data,
+                            blt_int16u len);
 
 
-#endif /* CAN_H */
-/*********************************** end of can.h **************************************/
+#endif /* BOOT_INFO_TABLE_ENABLE > 0 */
+
+
+#endif /* INFOTABLE_H */
+/*********************************** end of infotable.h ********************************/

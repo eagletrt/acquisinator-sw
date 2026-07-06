@@ -236,7 +236,7 @@ state_t run_state(state_t cur_state, state_data_t *data) {
     transition(data);
 
   return new_state;
-};
+}
 
 
 

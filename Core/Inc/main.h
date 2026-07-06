@@ -67,12 +67,8 @@ void Error_Handler(void);
 #define SDO_GPIO_Port GPIOA
 #define SDI_Pin GPIO_PIN_7
 #define SDI_GPIO_Port GPIOA
-#define ID2_Pin GPIO_PIN_8
-#define ID2_GPIO_Port GPIOA
 #define ID1_Pin GPIO_PIN_9
 #define ID1_GPIO_Port GPIOA
-#define USER_LED_Pin GPIO_PIN_10
-#define USER_LED_GPIO_Port GPIOA
 #define SWDIO_Pin GPIO_PIN_13
 #define SWDIO_GPIO_Port GPIOA
 #define SWCLK_Pin GPIO_PIN_14

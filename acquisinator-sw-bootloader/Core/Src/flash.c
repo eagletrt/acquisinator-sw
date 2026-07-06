@@ -147,7 +147,7 @@ static const tFlashSector flashLayout[] =
   /* { 0x08000800, 0x00800 },           flash sector  1 - 2kb (reserved for bootloader)*/
   /* { 0x08001000, 0x00800 },           flash sector  2 - 2kb (reserved for bootloader)*/
   /* { 0x08001800, 0x00800 },           flash sector  3 - 2kb (reserved for bootloader)*/
-  { 0x08002000, 0x00800 },              /* flash sector  4 - 2kb                       */
+  /* { 0x08002000, 0x00800 },           flash sector  4 - 2kb (reserved for bootloader)*/
   { 0x08002800, 0x00800 },              /* flash sector  5 - 2kb                       */
   { 0x08003000, 0x00800 },              /* flash sector  6 - 2kb                       */
   { 0x08003800, 0x00800 },              /* flash sector  7 - 2kb                       */
@@ -632,7 +632,7 @@ static blt_bool FlashAddToBlock(tFlashBlockInfo *block, blt_addr address,
     if ((blt_addr)(dst-&(block->data[0])) >= FLASH_WRITE_BLOCK_SIZE)
     {
       /* need to switch to a new block, so program the current one and init the next */
-      block = FlashSwitchBlock(block, current_base_addr+FLASH_WRITE_BLOCK_SIZE);
+      block = FlashSwitchBlock(block, block->base_addr+FLASH_WRITE_BLOCK_SIZE);
       if (block == BLT_NULL)
       {
         return BLT_FALSE;
