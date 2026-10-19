@@ -25,37 +25,83 @@
 #include "spi.h"
 #include "stm32f3xx_hal.h"
 #include "stm32f3xx_hal_gpio.h"
+#include "stm32f3xx_hal_uart.h"
 #include "tim.h"
 #include "usart.h"
 #include "gpio.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include <math.h>
+#include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
-#include "lockin-api.h"
-#include "sine-lut-api.h"
-#include "usart.h"
+#include <string.h>
+#include "sync-demod-api.h"
 #include <blinky-api.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
-
+// Result of one completed lock-in window, handed from the TIM2 ISR to the main loop
+struct LockinResult {
+    float i;      // In-phase amplitude [ADC counts, peak]
+    float q;      // Quadrature amplitude [ADC counts, peak]
+    float dc;     // Mean amplifier output [ADC counts]
+    uint16_t min; // Smallest sample in the window [ADC counts]
+    uint16_t max; // Largest sample in the window [ADC counts]
+    bool spi_error;
+};
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-#define SAMPLES 256
 #define DAC_MAX 4095
+#define VDDA_V 3.3f
 
-#define SAMPLING_FREQ 500.0f
-#define REF_FREQ 500.0f
-#define LPF_CUTOFF 5.0f
+// Eccitazione del ponte: sinusoide sul DAC1_OUT1 (PA4). 125 Hz non e' multiplo di 50 Hz,
+// e una finestra di 25 periodi (200 ms) contiene anche 10 periodi esatti di rete.
+#define EXC_FREQ_HZ 125U
+#define EXC_SAMPLES 64U                         // campioni DAC/ADC per periodo
+#define TICK_HZ (EXC_FREQ_HZ * EXC_SAMPLES)     // 8 kHz, frequenza dell'ISR di TIM2
+#define WINDOW_PERIODS 25U                      // 25 periodi = 200 ms -> 5 misure/s
 
-#define ADC_FULL_SCALE 4095.0f
-#define VCC 3.3f
-#define REF_AMPLITUDE (VCC / 2.0f)
+// Livelli del DAC: 0.25..0.85 V. Con REF dell'amplificatore a ~0.95 V e guadagno 100
+// l'uscita resta nel range dell'ADC anche con il ponte sbilanciato di circa +-15 ohm.
+#define EXC_DC_V 0.55f
+#define EXC_AMP_V 0.30f
+
+// Ponte e amplificatore (schema: R8 = 350R sopra l'estensimetro, ingresso - sul nodo SG_A)
+#define AMP_GAIN 100.0f
+#define BRIDGE_R_TOP 350.0f
+
+// Calibrazione a due punti: con CAL_ENABLED 0 la resistenza e' stimata dai valori nominali.
+// Per calibrare: montare al posto dell'estensimetro le resistenze CAL_R_LO e CAL_R_HI,
+// leggere per ciascuna v_out in mV (read_can.py / plot_can.py) e scriverlo in CAL_X_LO_MV / CAL_X_HI_MV.
+#define CAL_ENABLED 0
+#define CAL_R_LO 348.0f
+#define CAL_X_LO_MV 0.0f
+#define CAL_R_HI 361.0f
+#define CAL_X_HI_MV 0.0f
+// Sfasamento della catena analogica (opzionale): phase letta su 0x7A1 con R < 350 ohm
+#define CAL_PHASE_DEG 0.0f
+
+// Soglie di saturazione dell'uscita dell'amplificatore
+#define CLIP_LOW_V 0.02f
+#define CLIP_HIGH_V 3.25f
+
+// 0x7A0/0x7A1: liberi sulla primary (0x19A/0x19B sono DasShutdown/ShutdownState)
+#define CAN_ID_LOCKIN 0x7A0U
+#define CAN_ID_BRIDGE 0x7A1U
+
+#define FLAG_CLIP_LOW (1U << 0)
+#define FLAG_CLIP_HIGH (1U << 1)
+#define FLAG_SPI_ERROR (1U << 2)
+#define FLAG_UNCALIBRATED (1U << 3)
+#define FLAG_NO_DATA (1U << 4)
+
+// Senza misure per questo tempo il main loop invia comunque un frame di stato
+#define NO_DATA_TIMEOUT_MS 1000U
 
 #define BLINKY_PATTERN_SIZE (2U)
 /* USER CODE END PD */
@@ -68,13 +114,18 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
-static uint16_t sine_buf[SAMPLES];
-static struct SineLUT sine_lut;
-static struct LockInHandler lockin;
+static int16_t sin_q15[EXC_SAMPLES];
+static int16_t cos_q15[EXC_SAMPLES];
+static uint16_t dac_table[EXC_SAMPLES];
+static struct SyncDemodHandler demod;
 static struct Blinky blinker;
 
 static uint16_t pattern[BLINKY_PATTERN_SIZE] = { 500, 500 };
-static uint32_t last_print = 0;
+
+// Scritti dall'ISR di TIM2, letti dal main loop
+static struct LockinResult lockin_result;
+static volatile bool lockin_ready = false;
+static volatile uint32_t spi_error_count = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -85,7 +136,210 @@ static void VectorBase_Config(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+// Byte di selezione canale LTC1865L (single-ended): bit15=SGL/DIFF=1, bit14=ODD/SIGN.
+// CH0 -> ODD/SIGN=0 (0xAA), CH1 -> ODD/SIGN=1 (0xFF). I don't-care ripetono il pattern.
+static const uint8_t LTC1865L_CH0[2] = { 0xAA, 0xAA };  // CH1 single-ended = { 0xFF, 0xFF }
+#define LTC1865L_VREF 3.29f
+#define LTC1865L_FULL_SCALE 65536.0f
+#define LTC1865L_LSB_V (LTC1865L_VREF / LTC1865L_FULL_SCALE)
+#define LTC1865L_CONV_US 10U     // CONV alto per la conversione (tCONV max di qualche us)
+#define SPI_TIMEOUT_US 100U
 
+// CS/CONV dell'LTC1865L: su questa scheda e' su PA3 (non PA15/CONV_Pin di CubeMX)
+#define LTC1865L_CS_Port GPIOA
+#define LTC1865L_CS_Pin  GPIO_PIN_3
+
+// Contatore di cicli del core: serve per attese di pochi us dentro l'ISR, dove
+// HAL_GetTick() e' fermo (SysTick ha priorita' piu' bassa di TIM2).
+static void dwt_init(void) {
+    CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
+    DWT->CYCCNT = 0;
+    DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
+}
+
+static uint32_t us_to_cycles(uint32_t us) {
+    return us * (SystemCoreClock / 1000000U);
+}
+
+static void delay_us(uint32_t us) {
+    uint32_t start = DWT->CYCCNT;
+    uint32_t cycles = us_to_cycles(us);
+    while (DWT->CYCCNT - start < cycles) {
+    }
+}
+
+// Scambia un byte su SPI1 (8 bit, FRXTH impostato da HAL_SPI_Init), con timeout.
+static bool spi1_xfer(uint8_t tx, uint8_t *rx) {
+    uint32_t start = DWT->CYCCNT;
+    uint32_t timeout = us_to_cycles(SPI_TIMEOUT_US);
+
+    while ((SPI1->SR & SPI_SR_TXE) == 0U) {
+        if (DWT->CYCCNT - start > timeout) {
+            return false;
+        }
+    }
+    *(volatile uint8_t *)&SPI1->DR = tx;
+
+    while ((SPI1->SR & SPI_SR_RXNE) == 0U) {
+        if (DWT->CYCCNT - start > timeout) {
+            return false;
+        }
+    }
+    *rx = *(volatile uint8_t *)&SPI1->DR;
+    return true;
+}
+
+// Un campione dall'LTC1865L in un solo frame: CONV alto avvia la conversione,
+// poi CONV basso e 16 clock che leggono il risultato e caricano la selezione
+// canale per la conversione successiva. A regime si legge sempre CH0; il primo
+// campione dopo l'avvio puo' essere di un altro canale (scartato con la prima finestra).
+static bool ltc1865l_sample(uint16_t *out) {
+    while ((SPI1->SR & SPI_SR_RXNE) != 0U) {
+        (void)*(volatile uint8_t *)&SPI1->DR; // svuota eventuali residui di un frame fallito
+    }
+
+    HAL_GPIO_WritePin(LTC1865L_CS_Port, LTC1865L_CS_Pin, GPIO_PIN_SET);
+    delay_us(LTC1865L_CONV_US);
+    HAL_GPIO_WritePin(LTC1865L_CS_Port, LTC1865L_CS_Pin, GPIO_PIN_RESET);
+
+    uint8_t hi = 0;
+    uint8_t lo = 0;
+    if (!spi1_xfer(LTC1865L_CH0[0], &hi) || !spi1_xfer(LTC1865L_CH0[1], &lo)) {
+        return false;
+    }
+    *out = (uint16_t)(((uint16_t)hi << 8) | lo);
+    return true;
+}
+
+// Tabelle sin/cos per il demodulatore e tabella del DAC ricavata dalla stessa sin
+static void excitation_init(void) {
+    sync_demod_api_make_tables(sin_q15, cos_q15, EXC_SAMPLES);
+    for (uint32_t k = 0; k < EXC_SAMPLES; k++) {
+        float v = EXC_DC_V + EXC_AMP_V * (float)sin_q15[k] / (float)SYNC_DEMOD_Q15_ONE;
+        dac_table[k] = (uint16_t)lroundf(v / VDDA_V * (float)DAC_MAX);
+    }
+}
+
+#if CAL_ENABLED
+// Sbilanciamento del ponte d = (V+ - V-) / Vexc per un estensimetro da r ohm
+static float bridge_imbalance(float r) {
+    return 0.5F - r / (BRIDGE_R_TOP + r);
+}
+#endif
+
+// Inverte la catena: ampiezza in fase all'uscita dell'amplificatore [V] -> resistenza [ohm].
+// Modello: x = k*d + x0 (k = guadagno * ampiezza di eccitazione a meno della calibrazione).
+static float bridge_resistance(float x_v) {
+#if CAL_ENABLED
+    float d_lo = bridge_imbalance(CAL_R_LO);
+    float d_hi = bridge_imbalance(CAL_R_HI);
+    float x_lo = CAL_X_LO_MV / 1000.0F;
+    float x_hi = CAL_X_HI_MV / 1000.0F;
+    float k = (x_hi - x_lo) / (d_hi - d_lo);
+    float x0 = x_lo - k * d_lo;
+#else
+    float k = AMP_GAIN * EXC_AMP_V;
+    float x0 = 0.0F;
+#endif
+    float d = (x_v - x0) / k;
+    return BRIDGE_R_TOP * (0.5F - d) / (0.5F + d);
+}
+
+static void can_send(uint32_t id, const uint8_t data[8]) {
+    CAN_TxHeaderTypeDef hdr = { 0 };
+    hdr.StdId = id;
+    hdr.IDE = CAN_ID_STD;
+    hdr.RTR = CAN_RTR_DATA;
+    hdr.DLC = 8;
+
+    if (HAL_CAN_GetTxMailboxesFreeLevel(&hcan) > 0U) {
+        uint32_t mailbox;
+        HAL_CAN_AddTxMessage(&hcan, &hdr, (uint8_t *)data, &mailbox);
+    }
+}
+
+// Log su USART2 (solo TX su PA2, 115200 8N1): PA3/RX e' usato come CS dell'LTC1865L.
+// Float stampati come interi scalati: con newlib-nano %f non e' supportato di default.
+static void uart_log(float r_ohm, float x_v, float phase_deg, uint16_t dc, uint8_t flags) {
+    char out[96];
+    int32_t r_mohm = isfinite(r_ohm) ? (int32_t)lroundf(r_ohm * 1000.0F) : INT32_MIN;
+    int32_t x_uv = (int32_t)lroundf(x_v * 1e6F);
+    int32_t ph_cdeg = (int32_t)lroundf(phase_deg * 100.0F);
+    uint32_t r_abs = (r_mohm < 0) ? (uint32_t)(-(int64_t)r_mohm) : (uint32_t)r_mohm;
+    uint32_t ph_abs = (ph_cdeg < 0) ? (uint32_t)(-ph_cdeg) : (uint32_t)ph_cdeg;
+
+    int len;
+    if (r_mohm == INT32_MIN) {
+        len = snprintf(out, sizeof(out), "R=nan flags=0x%02X\r\n", flags);
+    } else {
+        len = snprintf(out, sizeof(out), "R=%s%lu.%03lu ohm x=%ld uV ph=%s%lu.%02lu deg dc=%u flags=0x%02X\r\n",
+                       (r_mohm < 0) ? "-" : "", (unsigned long)(r_abs / 1000U), (unsigned long)(r_abs % 1000U),
+                       (long)x_uv, (ph_cdeg < 0) ? "-" : "", (unsigned long)(ph_abs / 100U),
+                       (unsigned long)(ph_abs % 100U), dc, flags);
+    }
+    if (len > 0) {
+        HAL_UART_Transmit(&huart2, (uint8_t *)out, (uint16_t)((len < (int)sizeof(out)) ? len : (int)sizeof(out) - 1), 50);
+    }
+}
+
+// Converte il risultato di una finestra e lo invia su CAN (formati in acquisinator.dbc):
+//   0x7A0 ACQUISINATOR_DIAG:   lockin_out f32 [V], adc_raw u16 (media), adc_poll u8
+//   0x7A1 ACQUISINATOR_BRIDGE: resistance f32 [ohm], phase i16 [0.01 deg], flags u8, seq u8
+static void lockin_publish(const struct LockinResult *res) {
+    static uint8_t seq = 0;
+
+    float i_v = res->i * LTC1865L_LSB_V;
+    float q_v = res->q * LTC1865L_LSB_V;
+    float cal_phase = CAL_PHASE_DEG * (float)M_PI / 180.0F;
+    float x_v = i_v * cosf(cal_phase) + q_v * sinf(cal_phase); // componente in fase, con segno
+    float phase_deg = atan2f(q_v, i_v) * 180.0F / (float)M_PI;
+    float r_ohm = bridge_resistance(x_v);
+
+    uint8_t flags = 0;
+    if ((float)res->min * LTC1865L_LSB_V < CLIP_LOW_V) {
+        flags |= FLAG_CLIP_LOW;
+    }
+    if ((float)res->max * LTC1865L_LSB_V > CLIP_HIGH_V) {
+        flags |= FLAG_CLIP_HIGH;
+    }
+    if (res->spi_error) {
+        flags |= FLAG_SPI_ERROR;
+    }
+#if !CAL_ENABLED
+    flags |= FLAG_UNCALIBRATED;
+#endif
+
+    uint8_t data[8] = { 0 };
+    uint16_t dc = (uint16_t)lroundf(res->dc);
+    memcpy(&data[0], &x_v, sizeof(x_v));
+    data[4] = (uint8_t)dc;
+    data[5] = (uint8_t)(dc >> 8);
+    data[6] = (uint8_t)(res->spi_error ? HAL_ERROR : HAL_OK);
+    can_send(CAN_ID_LOCKIN, data);
+
+    int16_t phase_cdeg = (int16_t)lroundf(phase_deg * 100.0F);
+    memset(data, 0, sizeof(data));
+    memcpy(&data[0], &r_ohm, sizeof(r_ohm));
+    data[4] = (uint8_t)phase_cdeg;
+    data[5] = (uint8_t)((uint16_t)phase_cdeg >> 8);
+    data[6] = flags;
+    data[7] = seq++;
+    can_send(CAN_ID_BRIDGE, data);
+
+    uart_log(r_ohm, x_v, phase_deg, dc, flags);
+}
+
+// Nessuna finestra completata: resistenza NaN e il motivo nei flag, cosi' sul CAN
+// si vede che la scheda e' viva anche quando l'ADC non risponde.
+static void lockin_publish_no_data(bool spi_error) {
+    float r_ohm = NAN;
+    uint8_t data[8] = { 0 };
+    memcpy(&data[0], &r_ohm, sizeof(r_ohm));
+    data[6] = (uint8_t)(FLAG_NO_DATA | (spi_error ? FLAG_SPI_ERROR : 0U));
+    can_send(CAN_ID_BRIDGE, data);
+
+    uart_log(r_ohm, 0.0F, 0.0F, 0U, data[6]);
+}
 /* USER CODE END 0 */
 
 /**
@@ -123,35 +377,52 @@ int main(void) {
     MX_DAC1_Init();
     MX_USART2_UART_Init();
     /* USER CODE BEGIN 2 */
-    sine_lut_api_init(&sine_lut, sine_buf, SAMPLES, DAC_MAX);
-    HAL_DAC_Start(&hdac1, DAC_CHANNEL_1);
-    HAL_TIM_Base_Start_IT(&htim2);
-    lockin_api_init(&lockin, REF_FREQ, LPF_CUTOFF, SAMPLING_FREQ, REF_AMPLITUDE);
+    dwt_init();
+    excitation_init();
+    sync_demod_api_init(&demod, sin_q15, cos_q15, EXC_SAMPLES, WINDOW_PERIODS);
     blinky_api_init(&blinker, pattern, BLINKY_PATTERN_SIZE, true, BLINKY_LOW);
+    HAL_CAN_Start(&hcan);
 
+    HAL_ADCEx_Calibration_Start(&hadc1, ADC_SINGLE_ENDED);
+
+    {
+        GPIO_InitTypeDef cs_init = { 0 };
+        HAL_GPIO_WritePin(LTC1865L_CS_Port, LTC1865L_CS_Pin, GPIO_PIN_SET);
+        cs_init.Pin = LTC1865L_CS_Pin;
+        cs_init.Mode = GPIO_MODE_OUTPUT_PP;
+        cs_init.Pull = GPIO_NOPULL;
+        cs_init.Speed = GPIO_SPEED_FREQ_HIGH;
+        HAL_GPIO_Init(LTC1865L_CS_Port, &cs_init);
+    }
+    __HAL_SPI_ENABLE(&hspi1);
+
+    HAL_DAC_SetValue(&hdac1, DAC_CHANNEL_1, DAC_ALIGN_12B_R, dac_table[0]);
+    HAL_DAC_Start(&hdac1, DAC_CHANNEL_1);
+
+    // TIM2 a TICK_HZ: il suo clock e' PCLK1 x2 perche' il prescaler APB1 e' /2
+    __HAL_TIM_SET_AUTORELOAD(&htim2, (2U * HAL_RCC_GetPCLK1Freq()) / TICK_HZ - 1U);
+    HAL_TIM_Base_Start_IT(&htim2);
     /* USER CODE END 2 */
 
     /* Infinite loop */
     /* USER CODE BEGIN WHILE */
+    uint32_t last_publish = HAL_GetTick();
+    uint32_t last_spi_errors = 0;
     while (1) {
-        float signal, reference;
+        if (lockin_ready) {
+            __disable_irq();
+            struct LockinResult res = lockin_result;
+            lockin_ready = false;
+            __enable_irq();
 
-        // Read adc1 from resistor
-        HAL_ADC_Start(&hadc1);
-        HAL_ADC_PollForConversion(&hadc1, 10);
-        signal = (float)HAL_ADC_GetValue(&hadc1) * VCC / ADC_FULL_SCALE;
-
-        reference = HAL_DAC_GetValue(&hdac1, DAC_CHANNEL_1);
-
-        // Feed the lock-in amplifier with the new samples
-        float v_out = lockin_api_update(&lockin, signal, reference);
-
-        if (HAL_GetTick() - last_print >= 1000) {
-            last_print = HAL_GetTick();
-
-            char out[64];
-            int len = snprintf(out, sizeof(out), "Tensione in uscita: %f V\r\n", v_out);
-            HAL_UART_Transmit(&huart2, (uint8_t *)out, len, HAL_MAX_DELAY);
+            lockin_publish(&res);
+            last_publish = HAL_GetTick();
+            last_spi_errors = spi_error_count;
+        } else if (HAL_GetTick() - last_publish >= NO_DATA_TIMEOUT_MS) {
+            uint32_t spi_errors = spi_error_count;
+            lockin_publish_no_data(spi_errors != last_spi_errors);
+            last_publish = HAL_GetTick();
+            last_spi_errors = spi_errors;
         }
 
         enum BlinkyState led_status = blinky_api_routine(&blinker, HAL_GetTick());
@@ -205,10 +476,52 @@ void SystemClock_Config(void) {
 }
 
 /* USER CODE BEGIN 4 */
+// Ogni tick (8 kHz): campiona l'uscita dell'amplificatore, che si e' assestata sul
+// valore del DAC scritto al tick precedente, poi avanza il DAC al campione successivo.
+// Il campione viene demodulato con l'indice di fase del valore che lo ha prodotto.
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
-    if (htim->Instance == TIM2) {
-        HAL_DAC_SetValue(&hdac1, DAC_CHANNEL_1, DAC_ALIGN_12B_R, (sine_lut_api_next(&sine_lut) / 1.414f) + 600.0f);
+    static uint32_t exc_idx = 0;
+    static bool window_spi_error = false;
+    static bool first_window = true;
+
+    if (htim->Instance != TIM2) {
+        return;
     }
+
+    uint16_t raw = 0;
+    bool sample_ok = ltc1865l_sample(&raw);
+    uint32_t sampled_idx = exc_idx;
+
+    exc_idx = (exc_idx + 1U) % EXC_SAMPLES;
+    HAL_DAC_SetValue(&hdac1, DAC_CHANNEL_1, DAC_ALIGN_12B_R, dac_table[exc_idx]);
+
+    if (!sample_ok) {
+        // Un campione mancante romperebbe i periodi interi: si riparte con la finestra
+        sync_demod_api_reset(&demod);
+        window_spi_error = true;
+        spi_error_count++;
+        return;
+    }
+
+    if (!sync_demod_api_update(&demod, raw, sampled_idx)) {
+        return;
+    }
+
+    if (first_window) {
+        // La prima finestra contiene il primo campione dell'ADC, non affidabile
+        first_window = false;
+        window_spi_error = false;
+        return;
+    }
+
+    lockin_result.i = demod.i;
+    lockin_result.q = demod.q;
+    lockin_result.dc = demod.dc;
+    lockin_result.min = demod.min;
+    lockin_result.max = demod.max;
+    lockin_result.spi_error = window_spi_error;
+    window_spi_error = false;
+    lockin_ready = true;
 }
 
 static void VectorBase_Config(void) {
