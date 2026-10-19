@@ -18,16 +18,10 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-#include "adc.h"
-#include "blinky.h"
 #include "can.h"
 #include "dac.h"
 #include "spi.h"
-#include "stm32f3xx_hal.h"
-#include "stm32f3xx_hal_gpio.h"
-#include "stm32f3xx_hal_uart.h"
 #include "tim.h"
-#include "usart.h"
 #include "gpio.h"
 
 /* Private includes ----------------------------------------------------------*/
@@ -35,7 +29,6 @@
 #include <math.h>
 #include <stdbool.h>
 #include <stdint.h>
-#include <stdio.h>
 #include <string.h>
 #include "sync-demod-api.h"
 #include <blinky-api.h>
@@ -145,10 +138,6 @@ static const uint8_t LTC1865L_CH0[2] = { 0xAA, 0xAA };  // CH1 single-ended = { 
 #define LTC1865L_CONV_US 10U     // CONV alto per la conversione (tCONV max di qualche us)
 #define SPI_TIMEOUT_US 100U
 
-// CS/CONV dell'LTC1865L: su questa scheda e' su PA3 (non PA15/CONV_Pin di CubeMX)
-#define LTC1865L_CS_Port GPIOA
-#define LTC1865L_CS_Pin  GPIO_PIN_3
-
 // Contatore di cicli del core: serve per attese di pochi us dentro l'ISR, dove
 // HAL_GetTick() e' fermo (SysTick ha priorita' piu' bassa di TIM2).
 static void dwt_init(void) {
@@ -198,9 +187,9 @@ static bool ltc1865l_sample(uint16_t *out) {
         (void)*(volatile uint8_t *)&SPI1->DR; // svuota eventuali residui di un frame fallito
     }
 
-    HAL_GPIO_WritePin(LTC1865L_CS_Port, LTC1865L_CS_Pin, GPIO_PIN_SET);
+    HAL_GPIO_WritePin(LTC1865L_CS_Port_GPIO_Port, LTC1865L_CS_Port_Pin, GPIO_PIN_SET);
     delay_us(LTC1865L_CONV_US);
-    HAL_GPIO_WritePin(LTC1865L_CS_Port, LTC1865L_CS_Pin, GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(LTC1865L_CS_Port_GPIO_Port, LTC1865L_CS_Port_Pin, GPIO_PIN_RESET);
 
     uint8_t hi = 0;
     uint8_t lo = 0;
@@ -258,30 +247,6 @@ static void can_send(uint32_t id, const uint8_t data[8]) {
     }
 }
 
-// Log su USART2 (solo TX su PA2, 115200 8N1): PA3/RX e' usato come CS dell'LTC1865L.
-// Float stampati come interi scalati: con newlib-nano %f non e' supportato di default.
-static void uart_log(float r_ohm, float x_v, float phase_deg, uint16_t dc, uint8_t flags) {
-    char out[96];
-    int32_t r_mohm = isfinite(r_ohm) ? (int32_t)lroundf(r_ohm * 1000.0F) : INT32_MIN;
-    int32_t x_uv = (int32_t)lroundf(x_v * 1e6F);
-    int32_t ph_cdeg = (int32_t)lroundf(phase_deg * 100.0F);
-    uint32_t r_abs = (r_mohm < 0) ? (uint32_t)(-(int64_t)r_mohm) : (uint32_t)r_mohm;
-    uint32_t ph_abs = (ph_cdeg < 0) ? (uint32_t)(-ph_cdeg) : (uint32_t)ph_cdeg;
-
-    int len;
-    if (r_mohm == INT32_MIN) {
-        len = snprintf(out, sizeof(out), "R=nan flags=0x%02X\r\n", flags);
-    } else {
-        len = snprintf(out, sizeof(out), "R=%s%lu.%03lu ohm x=%ld uV ph=%s%lu.%02lu deg dc=%u flags=0x%02X\r\n",
-                       (r_mohm < 0) ? "-" : "", (unsigned long)(r_abs / 1000U), (unsigned long)(r_abs % 1000U),
-                       (long)x_uv, (ph_cdeg < 0) ? "-" : "", (unsigned long)(ph_abs / 100U),
-                       (unsigned long)(ph_abs % 100U), dc, flags);
-    }
-    if (len > 0) {
-        HAL_UART_Transmit(&huart2, (uint8_t *)out, (uint16_t)((len < (int)sizeof(out)) ? len : (int)sizeof(out) - 1), 50);
-    }
-}
-
 // Converte il risultato di una finestra e lo invia su CAN (formati in acquisinator.dbc):
 //   0x7A0 ACQUISINATOR_DIAG:   lockin_out f32 [V], adc_raw u16 (media), adc_poll u8
 //   0x7A1 ACQUISINATOR_BRIDGE: resistance f32 [ohm], phase i16 [0.01 deg], flags u8, seq u8
@@ -325,8 +290,6 @@ static void lockin_publish(const struct LockinResult *res) {
     data[6] = flags;
     data[7] = seq++;
     can_send(CAN_ID_BRIDGE, data);
-
-    uart_log(r_ohm, x_v, phase_deg, dc, flags);
 }
 
 // Nessuna finestra completata: resistenza NaN e il motivo nei flag, cosi' sul CAN
@@ -337,8 +300,6 @@ static void lockin_publish_no_data(bool spi_error) {
     memcpy(&data[0], &r_ohm, sizeof(r_ohm));
     data[6] = (uint8_t)(FLAG_NO_DATA | (spi_error ? FLAG_SPI_ERROR : 0U));
     can_send(CAN_ID_BRIDGE, data);
-
-    uart_log(r_ohm, 0.0F, 0.0F, 0U, data[6]);
 }
 /* USER CODE END 0 */
 
@@ -346,54 +307,42 @@ static void lockin_publish_no_data(bool spi_error) {
   * @brief  The application entry point.
   * @retval int
   */
-int main(void) {
+int main(void)
+{
 
-    /* USER CODE BEGIN 1 */
+  /* USER CODE BEGIN 1 */
     VectorBase_Config();
-    /* USER CODE END 1 */
+  /* USER CODE END 1 */
 
-    /* MCU Configuration--------------------------------------------------------*/
+  /* MCU Configuration--------------------------------------------------------*/
 
-    /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
-    HAL_Init();
+  /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
+  HAL_Init();
 
-    /* USER CODE BEGIN Init */
+  /* USER CODE BEGIN Init */
 
-    /* USER CODE END Init */
+  /* USER CODE END Init */
 
-    /* Configure the system clock */
-    SystemClock_Config();
+  /* Configure the system clock */
+  SystemClock_Config();
 
-    /* USER CODE BEGIN SysInit */
+  /* USER CODE BEGIN SysInit */
 
-    /* USER CODE END SysInit */
+  /* USER CODE END SysInit */
 
-    /* Initialize all configured peripherals */
-    MX_GPIO_Init();
-    MX_CAN_Init();
-    MX_SPI1_Init();
-    MX_ADC1_Init();
-    MX_TIM2_Init();
-    MX_DAC1_Init();
-    MX_USART2_UART_Init();
-    /* USER CODE BEGIN 2 */
+  /* Initialize all configured peripherals */
+  MX_GPIO_Init();
+  MX_CAN_Init();
+  MX_SPI1_Init();
+  MX_TIM2_Init();
+  MX_DAC1_Init();
+  /* USER CODE BEGIN 2 */
     dwt_init();
     excitation_init();
     sync_demod_api_init(&demod, sin_q15, cos_q15, EXC_SAMPLES, WINDOW_PERIODS);
     blinky_api_init(&blinker, pattern, BLINKY_PATTERN_SIZE, true, BLINKY_LOW);
     HAL_CAN_Start(&hcan);
 
-    HAL_ADCEx_Calibration_Start(&hadc1, ADC_SINGLE_ENDED);
-
-    {
-        GPIO_InitTypeDef cs_init = { 0 };
-        HAL_GPIO_WritePin(LTC1865L_CS_Port, LTC1865L_CS_Pin, GPIO_PIN_SET);
-        cs_init.Pin = LTC1865L_CS_Pin;
-        cs_init.Mode = GPIO_MODE_OUTPUT_PP;
-        cs_init.Pull = GPIO_NOPULL;
-        cs_init.Speed = GPIO_SPEED_FREQ_HIGH;
-        HAL_GPIO_Init(LTC1865L_CS_Port, &cs_init);
-    }
     __HAL_SPI_ENABLE(&hspi1);
 
     HAL_DAC_SetValue(&hdac1, DAC_CHANNEL_1, DAC_ALIGN_12B_R, dac_table[0]);
@@ -402,10 +351,10 @@ int main(void) {
     // TIM2 a TICK_HZ: il suo clock e' PCLK1 x2 perche' il prescaler APB1 e' /2
     __HAL_TIM_SET_AUTORELOAD(&htim2, (2U * HAL_RCC_GetPCLK1Freq()) / TICK_HZ - 1U);
     HAL_TIM_Base_Start_IT(&htim2);
-    /* USER CODE END 2 */
+  /* USER CODE END 2 */
 
-    /* Infinite loop */
-    /* USER CODE BEGIN WHILE */
+  /* Infinite loop */
+  /* USER CODE BEGIN WHILE */
     uint32_t last_publish = HAL_GetTick();
     uint32_t last_spi_errors = 0;
     while (1) {
@@ -427,52 +376,50 @@ int main(void) {
 
         enum BlinkyState led_status = blinky_api_routine(&blinker, HAL_GetTick());
         HAL_GPIO_WritePin(USER_LED_GPIO_Port, USER_LED_Pin, (GPIO_PinState)led_status);
-        /* USER CODE END WHILE */
+    /* USER CODE END WHILE */
 
-        /* USER CODE BEGIN 3 */
+    /* USER CODE BEGIN 3 */
     }
-    /* USER CODE END 3 */
+  /* USER CODE END 3 */
 }
 
 /**
   * @brief System Clock Configuration
   * @retval None
   */
-void SystemClock_Config(void) {
-    RCC_OscInitTypeDef RCC_OscInitStruct = { 0 };
-    RCC_ClkInitTypeDef RCC_ClkInitStruct = { 0 };
-    RCC_PeriphCLKInitTypeDef PeriphClkInit = { 0 };
+void SystemClock_Config(void)
+{
+  RCC_OscInitTypeDef RCC_OscInitStruct = {0};
+  RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
 
-    /** Initializes the RCC Oscillators according to the specified parameters
+  /** Initializes the RCC Oscillators according to the specified parameters
   * in the RCC_OscInitTypeDef structure.
   */
-    RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
-    RCC_OscInitStruct.HSEState = RCC_HSE_ON;
-    RCC_OscInitStruct.HSEPredivValue = RCC_HSE_PREDIV_DIV2;
-    RCC_OscInitStruct.HSIState = RCC_HSI_ON;
-    RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
-    RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
-    RCC_OscInitStruct.PLL.PLLMUL = RCC_PLL_MUL9;
-    if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK) {
-        Error_Handler();
-    }
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
+  RCC_OscInitStruct.HSEState = RCC_HSE_ON;
+  RCC_OscInitStruct.HSEPredivValue = RCC_HSE_PREDIV_DIV2;
+  RCC_OscInitStruct.HSIState = RCC_HSI_ON;
+  RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
+  RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
+  RCC_OscInitStruct.PLL.PLLMUL = RCC_PLL_MUL9;
+  if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
+  {
+    Error_Handler();
+  }
 
-    /** Initializes the CPU, AHB and APB buses clocks
+  /** Initializes the CPU, AHB and APB buses clocks
   */
-    RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK | RCC_CLOCKTYPE_SYSCLK | RCC_CLOCKTYPE_PCLK1 | RCC_CLOCKTYPE_PCLK2;
-    RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
-    RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
-    RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV2;
-    RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
+  RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
+                              |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
+  RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
+  RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
+  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV2;
+  RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
 
-    if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_2) != HAL_OK) {
-        Error_Handler();
-    }
-    PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_ADC12;
-    PeriphClkInit.Adc12ClockSelection = RCC_ADC12PLLCLK_DIV1;
-    if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInit) != HAL_OK) {
-        Error_Handler();
-    }
+  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_2) != HAL_OK)
+  {
+    Error_Handler();
+  }
 }
 
 /* USER CODE BEGIN 4 */
@@ -539,16 +486,17 @@ static void VectorBase_Config(void) {
   * @brief  This function is executed in case of error occurrence.
   * @retval None
   */
-void Error_Handler(void) {
-    /* USER CODE BEGIN Error_Handler_Debug */
+void Error_Handler(void)
+{
+  /* USER CODE BEGIN Error_Handler_Debug */
     /* User can add his own implementation to report the HAL error return state */
     __disable_irq();
     while (1) {
     }
-    /* USER CODE END Error_Handler_Debug */
+  /* USER CODE END Error_Handler_Debug */
 }
 
-#ifdef USE_FULL_ASSERT
+#ifdef  USE_FULL_ASSERT
 /**
   * @brief  Reports the name of the source file and the source line number
   *         where the assert_param error has occurred.
@@ -556,10 +504,11 @@ void Error_Handler(void) {
   * @param  line: assert_param error line source number
   * @retval None
   */
-void assert_failed(uint8_t *file, uint32_t line) {
-    /* USER CODE BEGIN 6 */
+void assert_failed(uint8_t *file, uint32_t line)
+{
+  /* USER CODE BEGIN 6 */
     /* User can add his own implementation to report the file name and line number,
      ex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
-    /* USER CODE END 6 */
+  /* USER CODE END 6 */
 }
 #endif /* USE_FULL_ASSERT */

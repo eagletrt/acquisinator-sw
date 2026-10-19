@@ -38,7 +38,6 @@ void MX_CAN_Init(void)
 
   /* USER CODE END CAN_Init 1 */
   hcan.Instance = CAN;
-  /* 1 Mbit/s: APB1=36MHz, presc=2, bit=1+15+2=18 TQ -> 36e6/(2*18)=1 Mbit, sample point 88.9% */
   hcan.Init.Prescaler = 2;
   hcan.Init.Mode = CAN_MODE_NORMAL;
   hcan.Init.SyncJumpWidth = CAN_SJW_1TQ;
