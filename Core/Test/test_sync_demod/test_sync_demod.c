@@ -112,8 +112,64 @@ void test_sync_demod_reset_drops_partial_window(void) {
     TEST_ASSERT_FLOAT_WITHIN(0.01f, DC, h.dc);
 }
 
+// Feed `n` samples of dc + amp*sin(...) + mains*sin(2*pi*50*t), sampled at 8 kHz (PERIOD
+// samples per 125 Hz period), starting at sample `k0`; returns how many results came out.
+static int feed(struct SyncDemodHandler *h, uint32_t k0, uint32_t n, float amp, float mains) {
+    int results = 0;
+    for (uint32_t k = k0; k < k0 + n; k++) {
+        uint32_t idx = k % PERIOD;
+        float theta = 2.0f * (float)M_PI * (float)idx / (float)PERIOD;
+        float t = (float)k / 8000.0f;
+        uint16_t x = (uint16_t)lroundf(DC + amp * sinf(theta) + mains * sinf(2.0f * (float)M_PI * 50.0f * t + 0.3f));
+        results += sync_demod_api_update(h, x, idx) ? 1 : 0;
+    }
+    return results;
+}
+
+// Sliding window: one result per period once the window is full.
+void test_sync_demod_sliding_rate(void) {
+    struct SyncDemodHandler h;
+    sync_demod_api_init(&h, sin_tab, cos_tab, PERIOD, 5U);
+    sync_demod_api_set_output_every(&h, 1U);
+    TEST_ASSERT_EQUAL_INT(0, feed(&h, 0, PERIOD * 5U - 1U, 1000.0f, 0.0f));
+    TEST_ASSERT_EQUAL_INT(1, feed(&h, PERIOD * 5U - 1U, 1U, 1000.0f, 0.0f));
+    TEST_ASSERT_EQUAL_INT(10, feed(&h, PERIOD * 5U, PERIOD * 10U, 1000.0f, 0.0f));
+    TEST_ASSERT_FLOAT_WITHIN(1.0f, 1000.0f, h.i);
+    TEST_ASSERT_FLOAT_WITHIN(1.0f, 0.0f, h.q);
+    TEST_ASSERT_FLOAT_WITHIN(0.01f, DC, h.dc);
+}
+
+// A 40 ms window (5 periods at 125 Hz = 2 mains periods) cancels 50 Hz exactly.
+void test_sync_demod_sliding_rejects_mains(void) {
+    struct SyncDemodHandler h;
+    sync_demod_api_init(&h, sin_tab, cos_tab, PERIOD, 5U);
+    sync_demod_api_set_output_every(&h, 1U);
+    for (uint32_t p = 0; p < 40U; p++) {
+        if (feed(&h, p * PERIOD, PERIOD, 1000.0f, 3000.0f) > 0) {
+            TEST_ASSERT_FLOAT_WITHIN(1.5f, 1000.0f, h.i);
+            TEST_ASSERT_FLOAT_WITHIN(1.5f, 0.0f, h.q);
+            TEST_ASSERT_FLOAT_WITHIN(0.5f, DC, h.dc);
+        }
+    }
+}
+
+// After an amplitude step the sliding result reaches the new value one window later.
+void test_sync_demod_sliding_follows_step(void) {
+    struct SyncDemodHandler h;
+    sync_demod_api_init(&h, sin_tab, cos_tab, PERIOD, 5U);
+    sync_demod_api_set_output_every(&h, 1U);
+    feed(&h, 0, PERIOD * 5U, 1000.0f, 0.0f);
+    feed(&h, PERIOD * 5U, PERIOD * 2U, 2000.0f, 0.0f);
+    TEST_ASSERT_FLOAT_WITHIN(1.0f, (3.0f * 1000.0f + 2.0f * 2000.0f) / 5.0f, h.i);
+    feed(&h, PERIOD * 7U, PERIOD * 3U, 2000.0f, 0.0f);
+    TEST_ASSERT_FLOAT_WITHIN(1.0f, 2000.0f, h.i);
+}
+
 int main(void) {
     UNITY_BEGIN();
+    RUN_TEST(test_sync_demod_sliding_rate);
+    RUN_TEST(test_sync_demod_sliding_rejects_mains);
+    RUN_TEST(test_sync_demod_sliding_follows_step);
     RUN_TEST(test_sync_demod_tables);
     RUN_TEST(test_sync_demod_window_completes_once);
     RUN_TEST(test_sync_demod_rejects_dc);

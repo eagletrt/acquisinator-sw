@@ -52,12 +52,28 @@ struct LockinResult {
 #define DAC_MAX 4095
 #define VDDA_V 3.3f
 
-// Eccitazione del ponte: sinusoide sul DAC1_OUT1 (PA4). 125 Hz non e' multiplo di 50 Hz,
-// e una finestra di 25 periodi (200 ms) contiene anche 10 periodi esatti di rete.
+// Eccitazione del ponte: sinusoide sul DAC1_OUT1 (PA4). 125 Hz non e' multiplo di 50 Hz.
 #define EXC_FREQ_HZ 125U
 #define EXC_SAMPLES 64U                         // campioni DAC/ADC per periodo
 #define TICK_HZ (EXC_FREQ_HZ * EXC_SAMPLES)     // 8 kHz, frequenza dell'ISR di TIM2
-#define WINDOW_PERIODS 25U                      // 25 periodi = 200 ms -> 5 misure/s
+
+// ---- le due impostazioni da cambiare ----
+// Finestra del demodulatore in periodi di eccitazione (8 ms l'uno). Deve durare un multiplo di
+// 40 ms (= 5 periodi a 125 Hz = 2 periodi di rete): cosi' 50 Hz e armoniche si cancellano esattamente.
+//   5 periodi  =  40 ms: banda ~11 Hz, rumore ~2.2 volte quello a 200 ms (prove dinamiche)
+//   25 periodi = 200 ms: banda ~2 Hz, rumore piu' basso (prove statiche, come prima)
+#define WINDOW_PERIODS 5U
+// Ogni quanti periodi inviare una misura (finestra mobile): 1 = 125 misure/s, 5 = 25/s, 25 = 5/s.
+// Ogni misura sono 2 frame CAN (0x7A0 + 0x7A1): 125/s = 250 frame/s, ~3% di 1 Mbit/s.
+#define OUTPUT_EVERY_PERIODS 1U
+// -----------------------------------------
+
+#if (WINDOW_PERIODS * 1000U) % EXC_FREQ_HZ != 0U || ((WINDOW_PERIODS * 1000U) / EXC_FREQ_HZ) % 40U != 0U
+#error "la finestra deve durare un multiplo di 40 ms (WINDOW_PERIODS multiplo di 5 a 125 Hz)"
+#endif
+#if WINDOW_PERIODS > SYNC_DEMOD_MAX_PERIODS || OUTPUT_EVERY_PERIODS == 0U
+#error "WINDOW_PERIODS al massimo SYNC_DEMOD_MAX_PERIODS, OUTPUT_EVERY_PERIODS almeno 1"
+#endif
 
 // Livelli del DAC: 0.25..0.85 V. Con REF dell'amplificatore a ~0.95 V e guadagno 100
 // l'uscita resta nel range dell'ADC anche con il ponte sbilanciato di circa +-15 ohm.
@@ -340,6 +356,7 @@ int main(void)
     dwt_init();
     excitation_init();
     sync_demod_api_init(&demod, sin_q15, cos_q15, EXC_SAMPLES, WINDOW_PERIODS);
+    sync_demod_api_set_output_every(&demod, OUTPUT_EVERY_PERIODS);
     blinky_api_init(&blinker, pattern, BLINKY_PATTERN_SIZE, true, BLINKY_LOW);
     HAL_CAN_Start(&hcan);
 
