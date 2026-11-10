@@ -467,6 +467,10 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
         return;
     }
 
+    uint8_t data[8] = {(uint8_t)raw, (uint8_t)(raw >> 8)};
+
+    can_send(0x12, data);
+
     if (!sync_demod_api_update(&demod, raw, sampled_idx)) {
         return;
     }

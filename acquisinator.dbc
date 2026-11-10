@@ -7,6 +7,8 @@ BS_:
 
 BU_: Acquisinator
 
+BO_ 18 ACQUISINATOR_RAW: 8 Acquisinator
+ SG_ adc_raw : 0|16@1+ (1,0) [0|65535] "code" Vector__XXX
 
 BO_ 1952 ACQUISINATOR_DIAG: 8 Acquisinator
  SG_ lockin_out : 0|32@1+ (1,0) [0|0] "V" Vector__XXX
