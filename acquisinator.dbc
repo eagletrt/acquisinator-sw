@@ -14,16 +14,57 @@ BO_ 1952 ACQUISINATOR_DIAG: 8 Acquisinator
  SG_ lockin_out : 0|32@1+ (1,0) [0|0] "V" Vector__XXX
  SG_ adc_raw : 32|16@1+ (1,0) [0|65535] "code" Vector__XXX
  SG_ adc_poll : 48|8@1+ (1,0) [0|255] "status" Vector__XXX
+ SG_ exc_id : 56|8@1+ (1,0) [0|255] "" Vector__XXX
 
 BO_ 1953 ACQUISINATOR_BRIDGE: 8 Acquisinator
- SG_ resistance : 0|32@1+ (1,0) [0|0] "ohm" Vector__XXX
+ SG_ bridge_out : 0|32@1+ (1,0) [0|0] "mV/V" Vector__XXX
  SG_ phase : 32|16@1- (0.01,0) [-180|180] "deg" Vector__XXX
  SG_ flags : 48|8@1+ (1,0) [0|255] "" Vector__XXX
  SG_ seq : 56|8@1+ (1,0) [0|255] "" Vector__XXX
 
+BO_ 1954 ACQUISINATOR_SET_EXC: 6 Vector__XXX
+ SG_ freq : 0|16@1+ (1,0) [0|1000] "Hz" Acquisinator
+ SG_ amp : 16|16@1+ (1,0) [0|3300] "mV" Acquisinator
+ SG_ dc : 32|16@1+ (1,0) [0|3300] "mV" Acquisinator
+
+BO_ 1955 ACQUISINATOR_EXC: 8 Acquisinator
+ SG_ freq : 0|16@1+ (0.1,0) [0|6553.5] "Hz" Vector__XXX
+ SG_ samples : 16|8@1+ (1,0) [0|255] "" Vector__XXX
+ SG_ periods : 24|8@1+ (1,0) [0|255] "" Vector__XXX
+ SG_ amp : 32|12@1+ (1,0) [0|4095] "mV" Vector__XXX
+ SG_ dc : 44|12@1+ (1,0) [0|4095] "mV" Vector__XXX
+ SG_ id : 56|8@1+ (1,0) [0|255] "" Vector__XXX
+
+BO_ 1956 ACQUISINATOR_ADC_STREAM: 8 Acquisinator
+ SG_ sample0 : 0|16@1+ (1,0) [0|65535] "code" Vector__XXX
+ SG_ sample1 : 16|16@1+ (1,0) [0|65535] "code" Vector__XXX
+ SG_ sample2 : 32|16@1+ (1,0) [0|65535] "code" Vector__XXX
+ SG_ phase : 48|6@1+ (1,0) [0|63] "" Vector__XXX
+ SG_ ch1 : 54|1@1+ (1,0) [0|1] "" Vector__XXX
+ SG_ dual : 55|1@1+ (1,0) [0|1] "" Vector__XXX
+ SG_ seq : 56|8@1+ (1,0) [0|255] "" Vector__XXX
+
+BO_ 1957 ACQUISINATOR_SET_STREAM: 1 Vector__XXX
+ SG_ enable : 0|8@1+ (1,0) [0|1] "" Acquisinator
+
 CM_ SG_ 1952 lockin_out "Componente in fase all'uscita dell'amplificatore, ampiezza di picco con segno";
+CM_ SG_ 1953 bridge_out "Uscita del ponte in fase / ampiezza di eccitazione (come una cella di carico); quarto di ponte: circa -GF * deformazione / 4. La forza si calibra su questa";
 CM_ SG_ 1952 adc_raw "Media dell'uscita dell'amplificatore sulla finestra";
-CM_ SG_ 1953 flags "bit0 saturazione bassa, bit1 saturazione alta, bit2 errore SPI, bit3 non calibrato, bit4 nessuna misura (resistance = NaN)";
+CM_ SG_ 1952 exc_id "Impostazione di eccitazione a cui e' stata presa la finestra (id di ACQUISINATOR_EXC)";
+CM_ BO_ 1954 "Nuova eccitazione; 0 = invariato. Rifiutata se non realizzabile: ACQUISINATOR_EXC torna con lo stesso id";
+CM_ SG_ 1954 freq "1..1000 Hz, almeno 5 Hz da ogni armonica di rete";
+CM_ SG_ 1954 amp "Ampiezza di picco, con dc +- amp entro 200..3100 mV (uscita del DAC con buffer)";
+CM_ BO_ 1955 "Eccitazione in uso: dopo ogni comando (id +1 se applicato) e ogni secondo";
+CM_ SG_ 1955 freq "Frequenza generata (periodo del timer arrotondato)";
+CM_ SG_ 1955 samples "Campioni DAC/ADC per periodo: tick = freq * samples";
+CM_ SG_ 1955 periods "Periodi per finestra del demodulatore: finestra = periods / freq";
+CM_ SG_ 1953 flags "bit0 saturazione bassa, bit1 saturazione alta, bit2 errore SPI, bit3 non usato, bit4 nessuna misura (bridge_out = NaN), bit5 ISR piu' lunga di un tick (frequenza troppo alta)";
+CM_ BO_ 1956 "Campioni grezzi dell'ADC (uscita dell'amplificatore), tre per frame in ordine di tempo, a freq * samples campioni/s; solo con lo streaming acceso";
+CM_ SG_ 1956 phase "Indice di fase dell'eccitazione del primo campione (0..samples-1): un salto rispetto al frame prima = campioni persi";
+CM_ SG_ 1956 ch1 "Il primo campione e' di CH1 (con dual)";
+CM_ SG_ 1956 dual "Firmware con ACQ_STREAM_CH1: campioni di CH0 e CH1 alternati, i due di ogni tick con lo stesso indice di fase";
+CM_ SG_ 1956 seq "Contatore dei frame: un salto = frame persi sul bus o dal ricevitore";
+CM_ BO_ 1957 "Streaming dei campioni grezzi: 1 lo accende per 3 s, va rinnovato (es. ogni secondo); 0 lo spegne";
 
 SIG_VALTYPE_ 1952 lockin_out : 1;
-SIG_VALTYPE_ 1953 resistance : 1;
+SIG_VALTYPE_ 1953 bridge_out : 1;

@@ -27,90 +27,99 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include <math.h>
+#include <stdatomic.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <string.h>
-#include "sync-demod-api.h"
+#include "bridge-api.h"
+#include "exc-runner-api.h"
 #include <blinky-api.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
-// Result of one completed lock-in window, handed from the TIM2 ISR to the main loop
-struct LockinResult {
-    float i;      // In-phase amplitude [ADC counts, peak]
-    float q;      // Quadrature amplitude [ADC counts, peak]
-    float dc;     // Mean amplifier output [ADC counts]
-    uint16_t min; // Smallest sample in the window [ADC counts]
-    uint16_t max; // Largest sample in the window [ADC counts]
-    bool spi_error;
-};
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 #define DAC_MAX 4095
 #define VDDA_V 3.3f
+// Escursione dell'uscita con il buffer del DAC attivo (datasheet F334, "DAC characteristics":
+// da ricontrollare). Il buffer e' specificato per carichi >= 5 kohm, il ponte ne presenta
+// ~350: l'ampiezza reale sul ponte e' piu' bassa di quella impostata, va misurata su PA4.
+#define DAC_OUT_MIN_V 0.2f
+#define DAC_OUT_MAX_V (VDDA_V - 0.2f)
 
-// Eccitazione del ponte: sinusoide sul DAC1_OUT1 (PA4). 125 Hz non e' multiplo di 50 Hz.
-#define EXC_FREQ_HZ 125U
-#define EXC_SAMPLES 64U                         // campioni DAC/ADC per periodo
-#define TICK_HZ (EXC_FREQ_HZ * EXC_SAMPLES)     // 8 kHz, frequenza dell'ISR di TIM2
-
-// ---- le due impostazioni da cambiare ----
-// Finestra del demodulatore in periodi di eccitazione (8 ms l'uno). Deve durare un multiplo di
-// 40 ms (= 5 periodi a 125 Hz = 2 periodi di rete): cosi' 50 Hz e armoniche si cancellano esattamente.
-//   5 periodi  =  40 ms: banda ~11 Hz, rumore ~2.2 volte quello a 200 ms (prove dinamiche)
-//   25 periodi = 200 ms: banda ~2 Hz, rumore piu' basso (prove statiche, come prima)
-#define WINDOW_PERIODS 5U
-// Ogni quanti periodi inviare una misura (finestra mobile): 1 = 125 misure/s, 5 = 25/s, 25 = 5/s.
-// Ogni misura sono 2 frame CAN (0x7A0 + 0x7A1): 125/s = 250 frame/s, ~3% di 1 Mbit/s.
-#define OUTPUT_EVERY_PERIODS 1U
-// -----------------------------------------
-
-#if (WINDOW_PERIODS * 1000U) % EXC_FREQ_HZ != 0U || ((WINDOW_PERIODS * 1000U) / EXC_FREQ_HZ) % 40U != 0U
-#error "la finestra deve durare un multiplo di 40 ms (WINDOW_PERIODS multiplo di 5 a 125 Hz)"
-#endif
-#if WINDOW_PERIODS > SYNC_DEMOD_MAX_PERIODS || OUTPUT_EVERY_PERIODS == 0U
-#error "WINDOW_PERIODS al massimo SYNC_DEMOD_MAX_PERIODS, OUTPUT_EVERY_PERIODS almeno 1"
-#endif
-
-// Livelli del DAC: 0.25..0.85 V. Con REF dell'amplificatore a ~0.95 V e guadagno 100
+// Eccitazione del ponte: sinusoide sul DAC1_OUT1 (PA4). Frequenza e livelli si cambiano a
+// runtime con il frame CAN 0x7A2; la temporizzazione la calcola exc_plan_api_make.
+// All'avvio: 125 Hz, 0.25..0.85 V. Con REF dell'amplificatore a ~0.95 V e guadagno 100
 // l'uscita resta nel range dell'ADC anche con il ponte sbilanciato di circa +-15 ohm.
-#define EXC_DC_V 0.55f
-#define EXC_AMP_V 0.30f
+#define EXC_FREQ_DEFAULT_HZ 125U
+#define EXC_DC_DEFAULT_MV 550U
+#define EXC_AMP_DEFAULT_MV 300U
+#define EXC_MAX_SAMPLES 64U   // campioni DAC/ADC per periodo, finche' il tick lo permette
+#define EXC_MIN_SAMPLES 16U   // sotto non si accetta: sopra EXC_MAX_TICK_HZ / 16 = 1 kHz
+// Tetto del tick di TIM2: l'ISR dura ~30 us (conversione 10 us + 16 bit SPI a 1.125 MHz)
+#define EXC_MAX_TICK_HZ 16000U
 
-// Ponte e amplificatore (schema: R8 = 350R sopra l'estensimetro, ingresso - sul nodo SG_A)
+// ---- le impostazioni da cambiare ----
+// Finestra minima del demodulatore: si usa la piu' corta >= WINDOW_MS fatta di periodi interi
+// di eccitazione che sia anche un numero intero di periodi di rete (entro MAINS_TOL_HZ):
+// cosi' 50 Hz e armoniche si cancellano. A 125 Hz con 40 ms: 5 periodi, esatti.
+//   40 ms: banda ~11 Hz (prove dinamiche); 200 ms: banda ~2 Hz, rumore ~2.2 volte piu' basso
+#define WINDOW_MS 40U
+#define WINDOW_MAX_MS 400U   // oltre, la frequenza viene rifiutata
+#define MAINS_TOL_HZ 0.1f    // la rete stessa deriva di ~0.1-0.2 Hz: oltre non serve
+// Distanza minima da ogni armonica di rete. Con la rete spostata di d Hz l'armonica k entra
+// nella misura per circa k * d / distanza della sua ampiezza: a 125 Hz (25 Hz da 100 e 150)
+// lo 0.4% con d = 0.1 Hz, a 5 Hz di distanza il 2%. In macchina la rete non c'e'.
+#define MAINS_GUARD_HZ 5.0f
+// Ogni quanto inviare una misura (finestra mobile), arrotondato a periodi interi:
+// 8 ms = 125 misure/s, 2 frame CAN l'una (0x7A0 + 0x7A1) = 250 frame/s, ~3% di 1 Mbit/s.
+#define OUTPUT_EVERY_MS 8U
+// -------------------------------------
+
+#if EXC_MAX_SAMPLES > EXC_RUNNER_MAX_SAMPLES
+#error "EXC_MAX_SAMPLES oltre le tabelle di ExcSetting"
+#endif
+#if WINDOW_MS == 0U || WINDOW_MS > WINDOW_MAX_MS || OUTPUT_EVERY_MS == 0U
+#error "serve 0 < WINDOW_MS <= WINDOW_MAX_MS e OUTPUT_EVERY_MS almeno 1"
+#endif
+
+// Amplificatore: guadagno differenziale (AD8553). L'uscita del ponte e' in mV/V: in fase al
+// ponte diviso l'ampiezza di eccitazione, proporzionale alla forza; la forza si calibra su questa.
 #define AMP_GAIN 100.0f
-#define BRIDGE_R_TOP 350.0f
-
-// Calibrazione a due punti: con CAL_ENABLED 0 la resistenza e' stimata dai valori nominali.
-// Per calibrare: montare al posto dell'estensimetro le resistenze CAL_R_LO e CAL_R_HI,
-// leggere per ciascuna v_out in mV (read_can.py / plot_can.py) e scriverlo in CAL_X_LO_MV / CAL_X_HI_MV.
-#define CAL_ENABLED 0
-#define CAL_R_LO 348.0f
-#define CAL_X_LO_MV 0.0f
-#define CAL_R_HI 361.0f
-#define CAL_X_HI_MV 0.0f
-// Sfasamento della catena analogica (opzionale): phase letta su 0x7A1 con R < 350 ohm
+// Sfasamento della catena analogica (opzionale): phase letta su 0x7A1 con il ponte sbilanciato
 #define CAL_PHASE_DEG 0.0f
 
 // Soglie di saturazione dell'uscita dell'amplificatore
 #define CLIP_LOW_V 0.02f
 #define CLIP_HIGH_V 3.25f
 
-// 0x7A0/0x7A1: liberi sulla primary (0x19A/0x19B sono DasShutdown/ShutdownState)
+// 0x7A0..0x7A5: liberi sulla primary (0x19A/0x19B sono DasShutdown/ShutdownState)
 #define CAN_ID_LOCKIN 0x7A0U
 #define CAN_ID_BRIDGE 0x7A1U
+#define CAN_ID_SET_EXC 0x7A2U  // ricevuto: freq u16 [Hz], amp u16 [mV], dc u16 [mV]; 0 = invariato
+#define CAN_ID_EXC 0x7A3U      // eccitazione in uso: dopo ogni comando e ogni EXC_STATUS_MS
+#define CAN_ID_STREAM 0x7A4U   // campioni grezzi dell'ADC, solo con lo streaming acceso
+#define CAN_ID_SET_STREAM 0x7A5U // ricevuto: enable u8 (1 = acceso per STREAM_KEEPALIVE_MS)
 
-#define FLAG_CLIP_LOW (1U << 0)
-#define FLAG_CLIP_HIGH (1U << 1)
-#define FLAG_SPI_ERROR (1U << 2)
-#define FLAG_UNCALIBRATED (1U << 3)
-#define FLAG_NO_DATA (1U << 4)
+// Streaming dei campioni grezzi: l'ISR li accoda, il main loop li spedisce a STREAM_PER_FRAME per
+// frame. Si spegne da solo se il comando non viene rinnovato: sul bus della macchina e' ~1/3 del traffico.
+#define STREAM_RING_SIZE 1024U // potenza di 2: ~128 ms a 8 kHz
+#define STREAM_PER_FRAME 3U
+#define STREAM_KEEPALIVE_MS 3000U
+// Etichetta di ogni campione nella coda e nel frame (byte phase): indice di fase nei bit 0..5 e
+#define STREAM_TAG_CH1 0x40U  // campione di CH1 (altrimenti CH0)
+#define STREAM_TAG_DUAL 0x80U // streaming di CH0 e CH1 alternati, uno per canale a ogni tick
+
+// Con -DACQ_STREAM_CH1 (build_flags in platformio.ini), solo a streaming acceso, a ogni tick si converte
+// anche CH1 subito dopo CH0, per avere a banco l'eccitazione vera (es. da un generatore esterno).
+// Lock-in e frame di misura restano quelli di sempre, su CH0. Senza il flag nulla cambia.
 
 // Senza misure per questo tempo il main loop invia comunque un frame di stato
 #define NO_DATA_TIMEOUT_MS 1000U
+#define EXC_STATUS_MS 1000U
 
 #define BLINKY_PATTERN_SIZE (2U)
 /* USER CODE END PD */
@@ -123,10 +132,30 @@ struct LockinResult {
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
-static int16_t sin_q15[EXC_SAMPLES];
-static int16_t cos_q15[EXC_SAMPLES];
-static uint16_t dac_table[EXC_SAMPLES];
-static struct SyncDemodHandler demod;
+// Eccitazione e acquisizione: due impostazioni, l'ISR gira su una mentre il main loop
+// prepara l'altra (exc_runner_api_request), adottata a fine periodo.
+static struct ExcRunnerConfig exc_cfg = {
+    .plan = {
+        .max_samples = EXC_MAX_SAMPLES,
+        .min_samples = EXC_MIN_SAMPLES,
+        .max_tick_hz = EXC_MAX_TICK_HZ,
+        .max_periods = SYNC_DEMOD_MAX_PERIODS,
+        .min_window_ms = WINDOW_MS,
+        .max_window_ms = WINDOW_MAX_MS,
+        .output_ms = OUTPUT_EVERY_MS,
+        .mains_hz = 50.0F,
+        .mains_tol_hz = MAINS_TOL_HZ,
+        .mains_guard_hz = MAINS_GUARD_HZ,
+    },
+    .vdda_v = VDDA_V,
+    .out_min_v = DAC_OUT_MIN_V,
+    .out_max_v = DAC_OUT_MAX_V,
+    .dac_max = DAC_MAX,
+    .default_freq_hz = EXC_FREQ_DEFAULT_HZ,
+    .default_dc_mv = EXC_DC_DEFAULT_MV,
+    .default_amp_mv = EXC_AMP_DEFAULT_MV,
+};
+static struct ExcRunner runner;
 static struct Blinky blinker;
 
 static uint16_t pattern[BLINKY_PATTERN_SIZE] = { 500, 500 };
@@ -135,6 +164,14 @@ static uint16_t pattern[BLINKY_PATTERN_SIZE] = { 500, 500 };
 static struct LockinResult lockin_result;
 static volatile bool lockin_ready = false;
 static volatile uint32_t spi_error_count = 0;
+static volatile uint32_t overrun_count = 0;
+
+// Coda dello streaming: un solo produttore (ISR) e un solo consumatore (main loop)
+static uint32_t stream_ring[STREAM_RING_SIZE]; // campione | etichetta << 16
+static volatile uint32_t stream_head = 0;      // scritto dall'ISR
+static volatile uint32_t stream_tail = 0;      // scritto dal main loop
+static volatile bool stream_on = false;
+static uint32_t stream_until = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -147,7 +184,10 @@ static void VectorBase_Config(void);
 /* USER CODE BEGIN 0 */
 // Byte di selezione canale LTC1865L (single-ended): bit15=SGL/DIFF=1, bit14=ODD/SIGN.
 // CH0 -> ODD/SIGN=0 (0xAA), CH1 -> ODD/SIGN=1 (0xFF). I don't-care ripetono il pattern.
-static const uint8_t LTC1865L_CH0[2] = { 0xAA, 0xAA };  // CH1 single-ended = { 0xFF, 0xFF }
+static const uint8_t LTC1865L_CH0[2] = { 0xAA, 0xAA };
+#ifdef ACQ_STREAM_CH1
+static const uint8_t LTC1865L_CH1[2] = { 0xFF, 0xFF };
+#endif
 #define LTC1865L_VREF 3.29f
 #define LTC1865L_FULL_SCALE 65536.0f
 #define LTC1865L_LSB_V (LTC1865L_VREF / LTC1865L_FULL_SCALE)
@@ -196,9 +236,10 @@ static bool spi1_xfer(uint8_t tx, uint8_t *rx) {
 
 // Un campione dall'LTC1865L in un solo frame: CONV alto avvia la conversione,
 // poi CONV basso e 16 clock che leggono il risultato e caricano la selezione
-// canale per la conversione successiva. A regime si legge sempre CH0; il primo
-// campione dopo l'avvio puo' essere di un altro canale (scartato con la prima finestra).
-static bool ltc1865l_sample(uint16_t *out) {
+// canale `next` per la conversione successiva. A regime il primo campione di ogni tick e'
+// sempre CH0; il primo campione dopo l'avvio puo' essere di un altro canale (scartato con la
+// prima finestra).
+static bool ltc1865l_sample(const uint8_t next[2], uint16_t *out) {
     while ((SPI1->SR & SPI_SR_RXNE) != 0U) {
         (void)*(volatile uint8_t *)&SPI1->DR; // svuota eventuali residui di un frame fallito
     }
@@ -209,45 +250,11 @@ static bool ltc1865l_sample(uint16_t *out) {
 
     uint8_t hi = 0;
     uint8_t lo = 0;
-    if (!spi1_xfer(LTC1865L_CH0[0], &hi) || !spi1_xfer(LTC1865L_CH0[1], &lo)) {
+    if (!spi1_xfer(next[0], &hi) || !spi1_xfer(next[1], &lo)) {
         return false;
     }
     *out = (uint16_t)(((uint16_t)hi << 8) | lo);
     return true;
-}
-
-// Tabelle sin/cos per il demodulatore e tabella del DAC ricavata dalla stessa sin
-static void excitation_init(void) {
-    sync_demod_api_make_tables(sin_q15, cos_q15, EXC_SAMPLES);
-    for (uint32_t k = 0; k < EXC_SAMPLES; k++) {
-        float v = EXC_DC_V + EXC_AMP_V * (float)sin_q15[k] / (float)SYNC_DEMOD_Q15_ONE;
-        dac_table[k] = (uint16_t)lroundf(v / VDDA_V * (float)DAC_MAX);
-    }
-}
-
-#if CAL_ENABLED
-// Sbilanciamento del ponte d = (V+ - V-) / Vexc per un estensimetro da r ohm
-static float bridge_imbalance(float r) {
-    return 0.5F - r / (BRIDGE_R_TOP + r);
-}
-#endif
-
-// Inverte la catena: ampiezza in fase all'uscita dell'amplificatore [V] -> resistenza [ohm].
-// Modello: x = k*d + x0 (k = guadagno * ampiezza di eccitazione a meno della calibrazione).
-static float bridge_resistance(float x_v) {
-#if CAL_ENABLED
-    float d_lo = bridge_imbalance(CAL_R_LO);
-    float d_hi = bridge_imbalance(CAL_R_HI);
-    float x_lo = CAL_X_LO_MV / 1000.0F;
-    float x_hi = CAL_X_HI_MV / 1000.0F;
-    float k = (x_hi - x_lo) / (d_hi - d_lo);
-    float x0 = x_lo - k * d_lo;
-#else
-    float k = AMP_GAIN * EXC_AMP_V;
-    float x0 = 0.0F;
-#endif
-    float d = (x_v - x0) / k;
-    return BRIDGE_R_TOP * (0.5F - d) / (0.5F + d);
 }
 
 static void can_send(uint32_t id, const uint8_t data[8]) {
@@ -263,58 +270,132 @@ static void can_send(uint32_t id, const uint8_t data[8]) {
     }
 }
 
+// Impostazione di default, prima di avviare TIM2
+static void exc_init(void) {
+    exc_cfg.plan.tim_clk_hz = 2U * HAL_RCC_GetPCLK1Freq(); // PCLK1 x2 perche' il prescaler APB1 e' /2
+    if (!exc_runner_api_init(&runner, &exc_cfg)) {
+        Error_Handler();
+    }
+}
+
+static void exc_publish(const struct ExcSetting *exc) {
+    uint8_t data[8];
+    exc_runner_api_pack_status(exc, data);
+    can_send(CAN_ID_EXC, data);
+}
+
+// Accetta solo i frame 0x7A2 e 0x7A5 nella FIFO0
+static void can_rx_filter_init(void) {
+    CAN_FilterTypeDef filter = { 0 };
+    filter.FilterBank = 0;
+    filter.FilterMode = CAN_FILTERMODE_IDLIST;
+    filter.FilterScale = CAN_FILTERSCALE_32BIT;
+    filter.FilterIdHigh = CAN_ID_SET_EXC << 5U;
+    filter.FilterIdLow = 0;
+    filter.FilterMaskIdHigh = CAN_ID_SET_STREAM << 5U; // in IDLIST e' il secondo id
+    filter.FilterMaskIdLow = 0;
+    filter.FilterFIFOAssignment = CAN_FILTER_FIFO0;
+    filter.FilterActivation = CAN_FILTER_ENABLE;
+    filter.SlaveStartFilterBank = 14;
+    if (HAL_CAN_ConfigFilter(&hcan, &filter) != HAL_OK) {
+        Error_Handler();
+    }
+}
+
+static void stream_command(bool enable) {
+    stream_until = HAL_GetTick() + STREAM_KEEPALIVE_MS;
+    stream_on = enable;
+}
+
+// Svuota la FIFO0: 0x7A5 accende o spegne lo streaming, ogni 0x7A2 diventa una richiesta per l'ISR. Se rifiutata si risponde
+// subito con l'impostazione in uso (id invariato), se accettata dopo che l'ISR l'ha applicata.
+static void can_rx_poll(void) {
+    CAN_RxHeaderTypeDef hdr;
+    uint8_t data[8] = { 0 };
+    while (HAL_CAN_GetRxFifoFillLevel(&hcan, CAN_RX_FIFO0) > 0U) {
+        if (HAL_CAN_GetRxMessage(&hcan, CAN_RX_FIFO0, &hdr, data) != HAL_OK) {
+            return;
+        }
+        if (hdr.IDE != CAN_ID_STD || hdr.RTR != CAN_RTR_DATA) {
+            continue;
+        }
+        if (hdr.StdId == CAN_ID_SET_STREAM) {
+            stream_command(hdr.DLC > 0U && data[0] != 0U);
+            continue;
+        }
+        if (hdr.StdId != CAN_ID_SET_EXC) {
+            continue;
+        }
+        for (uint32_t k = hdr.DLC; k < sizeof(data); k++) {
+            data[k] = 0; // byte mancanti = invariato
+        }
+        uint32_t freq_hz = (uint32_t)data[0] | ((uint32_t)data[1] << 8);
+        uint32_t amp_mv = (uint32_t)data[2] | ((uint32_t)data[3] << 8);
+        uint32_t dc_mv = (uint32_t)data[4] | ((uint32_t)data[5] << 8);
+        if (!exc_runner_api_request(&runner, freq_hz, dc_mv, amp_mv)) {
+            exc_publish(runner.active);
+        }
+    }
+}
+
+static const struct BridgeConfig bridge_cfg = {
+    .amp_gain = AMP_GAIN,
+    .adc_lsb_v = LTC1865L_LSB_V,
+    .cal_phase_rad = CAL_PHASE_DEG * (float)M_PI / 180.0F,
+    .clip_low_v = CLIP_LOW_V,
+    .clip_high_v = CLIP_HIGH_V,
+};
+
+// Spedisce i campioni accodati, solo con tutte e tre le mailbox libere: le altre due restano ai
+// frame di misura e di stato, che hanno anche id piu' bassi e vincono l'arbitraggio.
+//   0x7A4 ACQUISINATOR_ADC_STREAM: 3 campioni u16, etichetta u8 del primo, seq u8
+// Con la coda piena l'ISR scarta i campioni: il ricevitore lo vede da un salto dell'indice di fase.
+static void stream_poll(void) {
+    static uint8_t seq = 0;
+    if (stream_on && (int32_t)(HAL_GetTick() - stream_until) >= 0) {
+        stream_on = false;
+    }
+    uint32_t tail = stream_tail;
+    if (!stream_on) {
+        stream_tail = stream_head; // butta quello che resta
+        return;
+    }
+    while (stream_head - tail >= STREAM_PER_FRAME && HAL_CAN_GetTxMailboxesFreeLevel(&hcan) == 3U) {
+        atomic_signal_fence(memory_order_acquire); // campioni letti dopo stream_head
+        uint8_t data[8];
+        for (uint32_t k = 0; k < STREAM_PER_FRAME; k++) {
+            uint32_t entry = stream_ring[(tail + k) % STREAM_RING_SIZE];
+            data[2U * k] = (uint8_t)entry;
+            data[2U * k + 1U] = (uint8_t)(entry >> 8);
+        }
+        data[6] = (uint8_t)(stream_ring[tail % STREAM_RING_SIZE] >> 16);
+        data[7] = seq++;
+        tail += STREAM_PER_FRAME;
+        stream_tail = tail;
+        can_send(CAN_ID_STREAM, data);
+    }
+}
+
 // Converte il risultato di una finestra e lo invia su CAN (formati in acquisinator.dbc):
-//   0x7A0 ACQUISINATOR_DIAG:   lockin_out f32 [V], adc_raw u16 (media), adc_poll u8
-//   0x7A1 ACQUISINATOR_BRIDGE: resistance f32 [ohm], phase i16 [0.01 deg], flags u8, seq u8
+//   0x7A0 ACQUISINATOR_DIAG:   lockin_out f32 [V], adc_raw u16 (media), adc_poll u8, exc_id u8 (vedi 0x7A3)
+//   0x7A1 ACQUISINATOR_BRIDGE: bridge_out f32 [mV/V], phase i16 [0.01 deg], flags u8, seq u8
 static void lockin_publish(const struct LockinResult *res) {
     static uint8_t seq = 0;
+    struct BridgeReading reading;
+    uint8_t data[8];
 
-    float i_v = res->i * LTC1865L_LSB_V;
-    float q_v = res->q * LTC1865L_LSB_V;
-    float cal_phase = CAL_PHASE_DEG * (float)M_PI / 180.0F;
-    float x_v = i_v * cosf(cal_phase) + q_v * sinf(cal_phase); // componente in fase, con segno
-    float phase_deg = atan2f(q_v, i_v) * 180.0F / (float)M_PI;
-    float r_ohm = bridge_resistance(x_v);
-
-    uint8_t flags = 0;
-    if ((float)res->min * LTC1865L_LSB_V < CLIP_LOW_V) {
-        flags |= FLAG_CLIP_LOW;
-    }
-    if ((float)res->max * LTC1865L_LSB_V > CLIP_HIGH_V) {
-        flags |= FLAG_CLIP_HIGH;
-    }
-    if (res->spi_error) {
-        flags |= FLAG_SPI_ERROR;
-    }
-#if !CAL_ENABLED
-    flags |= FLAG_UNCALIBRATED;
-#endif
-
-    uint8_t data[8] = { 0 };
-    uint16_t dc = (uint16_t)lroundf(res->dc);
-    memcpy(&data[0], &x_v, sizeof(x_v));
-    data[4] = (uint8_t)dc;
-    data[5] = (uint8_t)(dc >> 8);
-    data[6] = (uint8_t)(res->spi_error ? HAL_ERROR : HAL_OK);
+    bridge_api_convert(&bridge_cfg, res, &reading);
+    bridge_api_pack_diag(res, &reading, data);
     can_send(CAN_ID_LOCKIN, data);
-
-    int16_t phase_cdeg = (int16_t)lroundf(phase_deg * 100.0F);
-    memset(data, 0, sizeof(data));
-    memcpy(&data[0], &r_ohm, sizeof(r_ohm));
-    data[4] = (uint8_t)phase_cdeg;
-    data[5] = (uint8_t)((uint16_t)phase_cdeg >> 8);
-    data[6] = flags;
-    data[7] = seq++;
+    bridge_api_pack_bridge(&reading, seq++, data);
     can_send(CAN_ID_BRIDGE, data);
 }
 
-// Nessuna finestra completata: resistenza NaN e il motivo nei flag, cosi' sul CAN
+// Nessuna finestra completata: uscita NaN e il motivo nei flag, cosi' sul CAN
 // si vede che la scheda e' viva anche quando l'ADC non risponde.
 static void lockin_publish_no_data(bool spi_error) {
-    float r_ohm = NAN;
-    uint8_t data[8] = { 0 };
-    memcpy(&data[0], &r_ohm, sizeof(r_ohm));
-    data[6] = (uint8_t)(FLAG_NO_DATA | (spi_error ? FLAG_SPI_ERROR : 0U));
+    uint8_t data[8];
+    bridge_api_pack_no_data(spi_error, data);
     can_send(CAN_ID_BRIDGE, data);
 }
 /* USER CODE END 0 */
@@ -354,19 +435,21 @@ int main(void)
   MX_DAC1_Init();
   /* USER CODE BEGIN 2 */
     dwt_init();
-    excitation_init();
-    sync_demod_api_init(&demod, sin_q15, cos_q15, EXC_SAMPLES, WINDOW_PERIODS);
-    sync_demod_api_set_output_every(&demod, OUTPUT_EVERY_PERIODS);
+    exc_init();
     blinky_api_init(&blinker, pattern, BLINKY_PATTERN_SIZE, true, BLINKY_LOW);
+    can_rx_filter_init();
     HAL_CAN_Start(&hcan);
 
     __HAL_SPI_ENABLE(&hspi1);
 
-    HAL_DAC_SetValue(&hdac1, DAC_CHANNEL_1, DAC_ALIGN_12B_R, dac_table[0]);
+    HAL_DAC_SetValue(&hdac1, DAC_CHANNEL_1, DAC_ALIGN_12B_R, runner.active->dac[0]);
     HAL_DAC_Start(&hdac1, DAC_CHANNEL_1);
 
-    // TIM2 a TICK_HZ: il suo clock e' PCLK1 x2 perche' il prescaler APB1 e' /2
-    __HAL_TIM_SET_AUTORELOAD(&htim2, (2U * HAL_RCC_GetPCLK1Freq()) / TICK_HZ - 1U);
+    // TIM2 a f * campioni per periodo. Timer fermo: ARR scritto direttamente, poi il preload fa si'
+    // che i cambi dall'ISR entrino all'update successivo (mai ARR < CNT, che bloccherebbe
+    // il contatore a 32 bit per ~60 s)
+    __HAL_TIM_SET_AUTORELOAD(&htim2, runner.active->plan.autoreload);
+    SET_BIT(htim2.Instance->CR1, TIM_CR1_ARPE);
     HAL_TIM_Base_Start_IT(&htim2);
   /* USER CODE END 2 */
 
@@ -374,7 +457,20 @@ int main(void)
   /* USER CODE BEGIN WHILE */
     uint32_t last_publish = HAL_GetTick();
     uint32_t last_spi_errors = 0;
+    uint32_t last_exc_status = HAL_GetTick();
+    uint8_t exc_reported_id = runner.active->id;
+    exc_publish(runner.active);
     while (1) {
+        can_rx_poll();
+
+        // nuova impostazione applicata dall'ISR, oppure stato periodico per i log
+        const struct ExcSetting *exc = runner.active;
+        if (exc->id != exc_reported_id || HAL_GetTick() - last_exc_status >= EXC_STATUS_MS) {
+            exc_publish(exc);
+            exc_reported_id = exc->id;
+            last_exc_status = HAL_GetTick();
+        }
+
         if (lockin_ready) {
             __disable_irq();
             struct LockinResult res = lockin_result;
@@ -390,6 +486,8 @@ int main(void)
             last_publish = HAL_GetTick();
             last_spi_errors = spi_errors;
         }
+
+        stream_poll();
 
         enum BlinkyState led_status = blinky_api_routine(&blinker, HAL_GetTick());
         HAL_GPIO_WritePin(USER_LED_GPIO_Port, USER_LED_Pin, (GPIO_PinState)led_status);
@@ -440,56 +538,73 @@ void SystemClock_Config(void)
 }
 
 /* USER CODE BEGIN 4 */
-// Ogni tick (8 kHz): campiona l'uscita dell'amplificatore, che si e' assestata sul
+// Accoda un campione per lo streaming; con la coda piena lo scarta.
+static void stream_push(uint16_t raw, uint32_t tag) {
+    uint32_t head = stream_head;
+    if (head - stream_tail < STREAM_RING_SIZE) {
+        stream_ring[head % STREAM_RING_SIZE] = (uint32_t)raw | (tag << 16U);
+        atomic_signal_fence(memory_order_release); // campione scritto prima di stream_head
+        stream_head = head + 1U;
+    }
+}
+
+// Ogni tick (f * campioni per periodo, 8 kHz a 125 Hz): campiona l'uscita dell'amplificatore, che si e' assestata sul
 // valore del DAC scritto al tick precedente, poi avanza il DAC al campione successivo.
 // Il campione viene demodulato con l'indice di fase del valore che lo ha prodotto.
-void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
-    static uint32_t exc_idx = 0;
-    static bool window_spi_error = false;
-    static bool first_window = true;
+static void tim2_tick(TIM_HandleTypeDef *htim) {
+    uint16_t raw = 0;
+#ifdef ACQ_STREAM_CH1
+    // letto una volta: selezione e campioni dello stesso tick restano coerenti; la conversione di CH1
+    // riseleziona CH0, quindi il primo campione del tick dopo e' sempre CH0
+    bool dual = stream_on;
+    bool sample_ok = ltc1865l_sample(dual ? LTC1865L_CH1 : LTC1865L_CH0, &raw);
+    uint16_t raw1 = 0;
+    bool sample1_ok = dual && ltc1865l_sample(LTC1865L_CH0, &raw1);
+#else
+    bool sample_ok = ltc1865l_sample(LTC1865L_CH0, &raw);
+#endif
 
+    struct ExcStep step;
+    exc_runner_api_advance(&runner, &step);
+    if (step.switched) {
+        // con il preload il nuovo periodo entra all'update successivo
+        __HAL_TIM_SET_AUTORELOAD(htim, step.autoreload);
+    }
+    HAL_DAC_SetValue(&hdac1, DAC_CHANNEL_1, DAC_ALIGN_12B_R, step.dac);
+
+    if (!sample_ok) {
+        spi_error_count++;
+    } else if (stream_on) {
+#ifdef ACQ_STREAM_CH1
+        if (dual) {
+            stream_push(raw, step.phase | STREAM_TAG_DUAL);
+            if (sample1_ok) {
+                stream_push(raw1, step.phase | STREAM_TAG_DUAL | STREAM_TAG_CH1);
+            }
+        } else {
+            stream_push(raw, step.phase);
+        }
+#else
+        stream_push(raw, step.phase);
+#endif
+    }
+    if (exc_runner_api_sample(&runner, &step, sample_ok, raw, &lockin_result)) {
+        lockin_ready = true;
+    }
+}
+
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
     if (htim->Instance != TIM2) {
         return;
     }
-
-    uint16_t raw = 0;
-    bool sample_ok = ltc1865l_sample(&raw);
-    uint32_t sampled_idx = exc_idx;
-
-    exc_idx = (exc_idx + 1U) % EXC_SAMPLES;
-    HAL_DAC_SetValue(&hdac1, DAC_CHANNEL_1, DAC_ALIGN_12B_R, dac_table[exc_idx]);
-
-    if (!sample_ok) {
-        // Un campione mancante romperebbe i periodi interi: si riparte con la finestra
-        sync_demod_api_reset(&demod);
-        window_spi_error = true;
-        spi_error_count++;
-        return;
+    tim2_tick(htim);
+    // L'HAL azzera UIF prima della callback: se e' gia' di nuovo alto, il tick successivo e'
+    // scaduto mentre l'ISR girava (tick troppo veloce per la durata dell'ISR). I campioni
+    // restano allineati alle tabelle, ma l'eccitazione non e' piu' regolare.
+    if (__HAL_TIM_GET_FLAG(htim, TIM_FLAG_UPDATE) != RESET) {
+        exc_runner_api_mark_overrun(&runner);
+        overrun_count++;
     }
-
-    uint8_t data[8] = {(uint8_t)raw, (uint8_t)(raw >> 8)};
-
-    can_send(0x12, data);
-
-    if (!sync_demod_api_update(&demod, raw, sampled_idx)) {
-        return;
-    }
-
-    if (first_window) {
-        // La prima finestra contiene il primo campione dell'ADC, non affidabile
-        first_window = false;
-        window_spi_error = false;
-        return;
-    }
-
-    lockin_result.i = demod.i;
-    lockin_result.q = demod.q;
-    lockin_result.dc = demod.dc;
-    lockin_result.min = demod.min;
-    lockin_result.max = demod.max;
-    lockin_result.spi_error = window_spi_error;
-    window_spi_error = false;
-    lockin_ready = true;
 }
 
 static void VectorBase_Config(void) {

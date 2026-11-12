@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """Legge ACQUISINATOR_BRIDGE / ACQUISINATOR_DIAG dal CAN tramite transceiver gs_usb.
 
-Uso: python plot_can.py [--signal {deformation,resistance,lockin_out,phase}] [--no-zero] [--no-plot] [--window S] [path/al/acquisinator.dbc]
+Uso: python plot_can.py [--signal {deformation,bridge_out,lockin_out,phase,adc_raw}] [--no-zero] [--no-plot] [--window S] [path/al/acquisinator.dbc]
 
 Di default apre un grafico live della deformazione in microstrain, ricavata dalla resistenza
 misurata dal lock-in con la stessa formula dei vecchi acquisinator. All'avvio la lettura viene
-azzerata sulla media dei primi campioni (puntone scarico!); con --no-zero lo zero e' a 350 ohm.
+azzerata sulla media dei primi campioni (puntone scarico!); con --no-zero lo zero e' a 0 mV/V.
 Il CAN viene
 letto in un thread separato e il grafico viene ridisegnato solo quando arrivano campioni
 nuovi, al massimo PLOT_FPS volte al secondo: cosi' non accumula ritardo.
@@ -19,6 +19,11 @@ resistenza e millivolt, quindi valgono per tutte e tre (la fase non ha un range)
 impostati i valori vengono centrati sul punto medio del range (curva, media e asse, non solo
 la vista) e il rumore viene mostrato anche in % del range. "Reset" toglie il range e torna ai
 valori assoluti con autoscala. Vale solo nell'app: il firmware non viene toccato.
+
+Gli slider sotto il grafico lo dimensionano: "finestra" i secondi mostrati (in fondo alla corsa
+tutta la storia tenuta, almeno WINDOW_MAX_S), "zoom y" da 1/16 a 16 volte l'autoscala sui punti
+visibili, "sposta y" sposta la vista in su o in giu' (in mezze altezze). Reset rimette zoom e
+spostamento.
 """
 
 import argparse
@@ -40,28 +45,29 @@ ADC_VREF_V = 3.29  # LTC1865L_VREF
 ADC_FULL_SCALE = 65536
 
 # Come nel firmware dei vecchi acquisinator (acquisinator_config.h)
-STRAIN_GAUGE_RNOM = 350.0  # ohm
 STRAIN_GAUGE_K = 2.01  # gauge factor
-MEASURES_PER_S = 125  # 125 Hz / OUTPUT_EVERY_PERIODS del firmware (main.c): aggiornare se cambia
-ZERO_SAMPLES = MEASURES_PER_S  # campioni mediati per lo zero (1 s)
-
-SET_SAMPLES = MEASURES_PER_S  # campioni mediati da "Set high" / "Set low" (1 s)
+# Medie a tempo, non a numero di campioni: le misure al secondo dipendono dalla frequenza
+# di eccitazione impostata a runtime (set_exc.py)
+ZERO_SECONDS = 1.0  # media per lo zero
+SET_SECONDS = 1.0  # media di "Set high" / "Set low"
 NOISE_SECONDS = 5.0  # finestra su cui si calcola il rumore
 RANGE_MARGIN = 0.05  # margine sopra e sotto il range impostato, in frazione del range
+WINDOW_MAX_S = 300.0  # corsa dello slider della finestra (e storia minima tenuta)
 # La fase non varia in modo monotono con il carico: niente estremi alto / basso
-RANGED_SIGNALS = ("deformation", "resistance", "lockin_out")
+RANGED_SIGNALS = ("deformation", "bridge_out", "lockin_out")
 
 DEFAULT_DBC = Path(__file__).resolve().parent / "acquisinator.dbc"
 
 # segnale -> (messaggio, etichetta asse y)
 SIGNALS = {
     "deformation": (BRIDGE_MESSAGE_NAME, "deformazione [µε]"),
-    "resistance": (BRIDGE_MESSAGE_NAME, "resistenza [ohm]"),
+    "bridge_out": (BRIDGE_MESSAGE_NAME, "uscita del ponte [mV/V]"),
     "phase": (BRIDGE_MESSAGE_NAME, "fase [deg]"),
     "lockin_out": (DIAG_MESSAGE_NAME, "componente in fase [mV]"),
+    "adc_raw": (DIAG_MESSAGE_NAME, "valore ADC, media della finestra [code]"),
 }
 
-FLAG_NAMES = ((0, "SATURA BASSO"), (1, "SATURA ALTO"), (2, "ERRORE SPI"), (3, "non calibrato"), (4, "NESSUNA MISURA"))
+FLAG_NAMES = ((0, "SATURA BASSO"), (1, "SATURA ALTO"), (2, "ERRORE SPI"), (3, "non calibrato"), (4, "NESSUNA MISURA"), (5, "TICK PERSO"))
 
 
 def parse_args() -> argparse.Namespace:
@@ -76,7 +82,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--no-zero",
         action="store_true",
-        help=f"non azzerare all'avvio: deformazione riferita a {STRAIN_GAUGE_RNOM:.0f} ohm",
+        help="non azzerare all'avvio: deformazione riferita a 0 mV/V (ponte bilanciato)",
     )
     parser.add_argument("--no-plot", action="store_true", help="stampa soltanto, senza grafico")
     parser.add_argument(
@@ -89,14 +95,16 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def deformation(resistance: float, r_zero: float) -> float:
-    """Deformazione in microstrain, stessa convenzione di segno del vecchio firmware."""
-    return (r_zero - resistance) / (r_zero * STRAIN_GAUGE_K) * 1e6
+def deformation(bridge_out: float, out_zero: float) -> float:
+    """Deformazione in microstrain da un quarto di ponte, stessa convenzione di segno del vecchio
+    firmware (positiva quando la resistenza scende): dR/R = 4 * uscita del ponte."""
+    return 4.0 * (bridge_out - out_zero) / 1000.0 / STRAIN_GAUGE_K * 1e6
 
 
 def read_frames(bus: can.BusABC, bridge, diag, zero: bool, stop: threading.Event, samples: deque | None) -> None:
-    r_zero = None if zero else STRAIN_GAUGE_RNOM
+    out_zero = None if zero else 0.0
     zero_buffer: list[float] = []
+    zero_start = None
     while not stop.is_set():
         frame = bus.recv(timeout=0.1)
         if frame is None or frame.is_error_frame:
@@ -105,25 +113,26 @@ def read_frames(bus: can.BusABC, bridge, diag, zero: bool, stop: threading.Event
             data = bridge.decode(frame.data)
             flags = int(data["flags"])
             notes = ", ".join(name for bit, name in FLAG_NAMES if flags & (1 << bit))
-            if data["resistance"] != data["resistance"]:  # NaN: frame di stato senza misura
+            if data["bridge_out"] != data["bridge_out"]:  # NaN: frame di stato senza misura
                 print(f"{frame.timestamp:.3f}  {notes}")
                 continue
-            if r_zero is None:
-                zero_buffer.append(data["resistance"])
-                if len(zero_buffer) < ZERO_SAMPLES:
+            if out_zero is None:
+                zero_buffer.append(data["bridge_out"])
+                zero_start = frame.timestamp if zero_start is None else zero_start
+                if frame.timestamp - zero_start < ZERO_SECONDS:
                     continue
-                r_zero = sum(zero_buffer) / len(zero_buffer)
-                print(f"Zero: {r_zero:.3f} ohm (media di {ZERO_SAMPLES} campioni)")
-            data["deformation"] = deformation(data["resistance"], r_zero)
+                out_zero = sum(zero_buffer) / len(zero_buffer)
+                print(f"Zero: {out_zero:.5f} mV/V (media di {len(zero_buffer)} campioni in {ZERO_SECONDS:.0f} s)")
+            data["deformation"] = deformation(data["bridge_out"], out_zero)
             print(
-                f"{frame.timestamp:.3f}  R={data['resistance']:8.3f} ohm  def={data['deformation']:+9.1f} µε"
+                f"{frame.timestamp:.3f}  out={data['bridge_out']:+9.5f} mV/V  def={data['deformation']:+9.1f} µε"
                 f"  fase={data['phase']:+7.2f} deg  {notes}"
             )
         elif frame.arbitration_id == diag.frame_id:
             data = diag.decode(frame.data)
             mean_v = data["adc_raw"] * ADC_VREF_V / ADC_FULL_SCALE
             data["lockin_out"] *= 1000.0  # il firmware lo manda in V, qui si lavora in mV
-            print(f"{frame.timestamp:.3f}  v_out={data['lockin_out']:+9.3f} mV  media={mean_v:.4f} V")
+            print(f"{frame.timestamp:.3f}  v_out={data['lockin_out']:+9.3f} mV  adc_raw={data['adc_raw']:5.0f}  media={mean_v:.4f} V")
         else:
             continue
         if samples is not None:
@@ -143,16 +152,20 @@ def noise_stats(values: list[float]) -> tuple[float, float, float]:
 def plot_live(samples: deque, initial_signal: str, window: float) -> None:
     import matplotlib.pyplot as plt
     from matplotlib.animation import FuncAnimation
-    from matplotlib.widgets import Button, RadioButtons
+    from matplotlib.widgets import Button, RadioButtons, Slider
 
-    fig, ax = plt.subplots(figsize=(9.0, 5.5))
-    fig.subplots_adjust(bottom=0.22, top=0.80, right=0.76)
+    fig, ax = plt.subplots(figsize=(9.0, 6.5))
+    fig.subplots_adjust(bottom=0.32, top=0.82, right=0.76)
     ax.set_xlabel("tempo [s]")
     ax.ticklabel_format(useOffset=False)
     ax.grid(True)
 
     t0 = None
     current = initial_signal
+    # Storia tenuta: almeno quanto lo slider della finestra puo' mostrare (0 = tutta)
+    history = 0.0 if window <= 0 else max(window, WINDOW_MAX_S)
+    # Dimensionamento dagli slider: finestra in s (0 = tutta la storia), zoom e spostamento verticali
+    view = { "window": window, "zoom": 1.0, "shift": 0.0 }
     # Storia e range di ogni grandezza (valori assoluti): cambiando selezione non si perde niente
     series: dict[str, tuple[list[float], list[float]]] = { name: ([], []) for name in SIGNALS }
     limits: dict[str, dict[str, float | None]] = { name: { "high": None, "low": None } for name in SIGNALS }
@@ -185,19 +198,27 @@ def plot_live(samples: deque, initial_signal: str, window: float) -> None:
 
         shown = [y - center for y in ys]
         line.set_data(xs, shown)
-        if xs and window > 0:
-            ax.set_xlim(max(0.0, xs[-1] - window), max(window, xs[-1]))
+        shown_window = view["window"]
+        visible = shown
+        if xs:
+            if shown_window > 0:
+                x_low = max(0.0, xs[-1] - shown_window)
+                ax.set_xlim(x_low, max(shown_window, xs[-1]))
+                visible = [y for x, y in zip(xs, shown) if x >= x_low]
+            else:
+                ax.set_xlim(xs[0], max(xs[-1], xs[0] + 1.0))
 
+        # Asse y: range impostato, oppure autoscala sui soli punti visibili; poi zoom e spostamento
+        mid, half = 0.0, 1.0
         if ranged:
             half = abs(high - low) * (0.5 + RANGE_MARGIN)
-            ax.set_ylim(-half, half)
-            if window <= 0:
-                ax.relim(visible_only=True)
-                ax.autoscale_view(scaley=False)
-        else:
-            ax.set_autoscaley_on(True)  # set_ylim() di un range precedente la disattiva
-            ax.relim(visible_only=True)
-            ax.autoscale_view(scalex=window <= 0)
+        elif visible:
+            y_low, y_high = min(visible), max(visible)
+            mid = (y_low + y_high) / 2.0
+            half = (y_high - y_low) / 2.0 * (1.0 + RANGE_MARGIN) or max(abs(mid) * 0.01, 1e-6)
+        mid += view["shift"] * half
+        half /= view["zoom"]
+        ax.set_ylim(mid - half, mid + half)
 
         text = "in attesa di campioni..."
         if xs:
@@ -225,9 +246,9 @@ def plot_live(samples: deque, initial_signal: str, window: float) -> None:
             xs.append(t - t0)
             ys.append(value)
 
-        if window > 0:
+        if history > 0:
             for xs, ys in series.values():
-                while xs and xs[0] < xs[-1] - window:
+                while xs and xs[0] < xs[-1] - history:
                     del xs[0], ys[0]
         redraw()
 
@@ -240,10 +261,10 @@ def plot_live(samples: deque, initial_signal: str, window: float) -> None:
     # nello stesso istante per tutte, cosi' vale qualunque sia quella mostrata.
     def set_limit(which: str) -> None:
         for signal in RANGED_SIGNALS:
-            ys = series[signal][1]
+            xs, ys = series[signal]
             if not ys:
                 continue
-            recent = ys[-SET_SAMPLES:]
+            recent = [y for x, y in zip(xs, ys) if x >= xs[-1] - SET_SECONDS]
             limits[signal][which] = sum(recent) / len(recent)
             print(f"Set {which} ({signal}): {limits[signal][which]:.3f} {unit_of(signal)}")
         redraw()
@@ -251,7 +272,24 @@ def plot_live(samples: deque, initial_signal: str, window: float) -> None:
     def reset_limits(_event) -> None:
         for signal in limits:
             limits[signal] = { "high": None, "low": None }
+        for slider in (zoom_slider, shift_slider):
+            slider.reset()
         print("Range azzerato: valori assoluti, autoscala")
+        redraw()
+
+    def set_window(value: float) -> None:
+        # in fondo alla corsa: tutta la storia tenuta
+        view["window"] = 0.0 if value >= window_slider.valmax else value
+        window_slider.valtext.set_text("tutto" if view["window"] <= 0 else f"{value:.0f} s")
+        redraw()
+
+    def set_zoom(value: float) -> None:
+        view["zoom"] = 2.0**value
+        zoom_slider.valtext.set_text(f"x{view['zoom']:.2g}")
+        redraw()
+
+    def set_shift(value: float) -> None:
+        view["shift"] = value
         redraw()
 
     # tenere i riferimenti ai widget: senza, smettono di rispondere ai click
@@ -266,6 +304,21 @@ def plot_live(samples: deque, initial_signal: str, window: float) -> None:
         button = Button(fig.add_axes((0.10 + 0.17 * column, 0.03, 0.15, 0.07)), text)
         button.on_clicked(callback)
         widgets.append(button)
+
+    window_max = history if history > 0 else WINDOW_MAX_S
+    window_slider = Slider(
+        fig.add_axes((0.20, 0.21, 0.50, 0.03)), "finestra", 1.0, window_max, valinit=window if window > 0 else window_max
+    )
+    # zoom in potenze di 2: da 1/16 a 16 volte l'autoscala
+    zoom_slider = Slider(fig.add_axes((0.20, 0.165, 0.50, 0.03)), "zoom y", -4.0, 4.0, valinit=0.0)
+    # spostamento in mezze altezze dell'autoscala, verso l'alto se positivo
+    shift_slider = Slider(fig.add_axes((0.20, 0.12, 0.50, 0.03)), "sposta y", -2.0, 2.0, valinit=0.0)
+    window_slider.on_changed(set_window)
+    zoom_slider.on_changed(set_zoom)
+    shift_slider.on_changed(set_shift)
+    widgets.extend((window_slider, zoom_slider, shift_slider))
+    set_window(window_slider.val)
+    zoom_slider.valtext.set_text("x1")
 
     radio_ax = fig.add_axes((0.79, 0.45, 0.20, 0.30))
     radio_ax.set_title("grandezza", fontsize=9)

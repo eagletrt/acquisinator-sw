@@ -7,7 +7,7 @@
 #define SYNC_DEMOD_Q15_ONE (32767)
 
 /* Longest window, in excitation periods (sizes the per-period ring buffer). */
-#define SYNC_DEMOD_MAX_PERIODS (25U)
+#define SYNC_DEMOD_MAX_PERIODS (64U)
 
 /* Sums of one excitation period. */
 struct SyncDemodPeriod {
